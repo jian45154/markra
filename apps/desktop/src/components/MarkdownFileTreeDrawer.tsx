@@ -513,7 +513,7 @@ export function MarkdownFileTreeDrawer({
       >
         {open && onResize && resolvedWidth !== null ? (
           <div
-            className="absolute inset-y-0 right-0 z-30 w-2 cursor-col-resize touch-none outline-none hover:[&>span]:bg-(--accent) focus-visible:[&>span]:bg-(--accent)"
+            className="markdown-file-tree-resizer absolute top-10 right-0 bottom-0 z-30 w-2 cursor-col-resize touch-none outline-none"
             role="separator"
             tabIndex={0}
             aria-label={label("app.resizeMarkdownFiles")}
@@ -523,9 +523,7 @@ export function MarkdownFileTreeDrawer({
             aria-valuenow={resolvedWidth}
             onKeyDown={handleResizeKeyDown}
             onPointerDown={handleResizePointerDown}
-          >
-            <span className="pointer-events-none absolute top-2 right-0 bottom-2 w-px rounded-full bg-transparent transition-colors duration-150 ease-out" />
-          </div>
+          />
         ) : null}
         <div className="grid h-10 grid-cols-[40px_minmax(0,1fr)_40px] items-center border-b border-(--border-default)">
           <IconButton
