@@ -43,6 +43,7 @@ pub(crate) struct MenuLabels {
     pub(crate) toggle_file_list: &'static str,
     pub(crate) toggle_markra_ai: &'static str,
     pub(crate) ai_writing_command: &'static str,
+    pub(crate) toggle_read_only_mode: &'static str,
     pub(crate) toggle_source_mode: &'static str,
     pub(crate) bold: &'static str,
     pub(crate) italic: &'static str,

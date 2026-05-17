@@ -135,6 +135,7 @@ describe("useEditorPreferences", () => {
         toggleAiAgent: "Mod+Alt+J",
         toggleAiCommand: "Mod+Shift+J",
         toggleMarkdownFiles: "Mod+Shift+M",
+        toggleReadOnlyMode: "Mod+Alt+L",
         toggleSourceMode: "Mod+Alt+S"
       },
       restoreWorkspaceOnStartup: true,
@@ -210,6 +211,7 @@ describe("useEditorPreferences", () => {
           toggleAiAgent: "Mod+Alt+J",
           toggleAiCommand: "Mod+Shift+J",
           toggleMarkdownFiles: "Mod+Shift+M",
+          toggleReadOnlyMode: "Mod+Alt+L",
           toggleSourceMode: "Mod+Alt+S"
         },
         restoreWorkspaceOnStartup: false,

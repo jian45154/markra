@@ -200,6 +200,7 @@ export default function App() {
   const [aiContextMenuActionPending, setAiContextMenuActionPending] = useState(false);
   const [editorMode, setEditorMode] = useState<EditorMode>("visual");
   const [activeEditorSurface, setActiveEditorSurface] = useState<EditorSurface>("visual");
+  const [readOnlyMode, setReadOnlyMode] = useState(false);
   const [splitVisualPanePercent, setSplitVisualPanePercent] = useState(defaultSplitVisualPanePercent);
   const [visualEditorReadySequence, setVisualEditorReadySequence] = useState(0);
   const [exportSnapshot, setExportSnapshot] = useState<MarkdownExportSnapshot | null>(null);
@@ -563,6 +564,12 @@ export default function App() {
     closeAiCommand();
     editor.clearAiSelection();
   }, [closeAiCommand, editor]);
+  const handleReadOnlyModeToggle = useCallback(() => {
+    const nextReadOnlyMode = !readOnlyMode;
+    setReadOnlyMode(nextReadOnlyMode);
+
+    if (nextReadOnlyMode) handleAiCommandClose();
+  }, [handleAiCommandClose, readOnlyMode]);
   const shouldCloseAiCommandForAiAgentOpen = useCallback(
     (nextOpen: boolean) => shouldCloseAiCommandOnAgentPanelOpen({
       closeAiCommandOnAgentPanelOpen: editorPreferences.preferences.closeAiCommandOnAgentPanelOpen,
@@ -654,6 +661,12 @@ export default function App() {
   const handleTextSelectionChange = useCallback((selection: AiSelectionContext | null) => {
     updateActiveAiSelection(selection);
 
+    if (readOnlyMode) {
+      setAiSelectionToolbarAnchor(null);
+      editor.clearAiSelection();
+      return;
+    }
+
     if (!selection?.text.trim()) {
       setAiSelectionToolbarAnchor(null);
       editor.clearAiSelection();
@@ -704,6 +717,7 @@ export default function App() {
     editorPreferences.preferences.aiSelectionDisplayMode,
     editorPreferences.preferences.autoOpenAiOnSelection,
     editorPreferences.preferences.closeAiCommandOnAgentPanelOpen,
+    readOnlyMode,
     updateActiveAiSelection
   ]);
   const getEditorSelection = editor.getSelection;
@@ -716,7 +730,7 @@ export default function App() {
   const aiContextMenuActionRef = useRef<((intent: AiQuickActionIntent, prompt: string) => unknown) | null>(null);
   useEffect(() => {
     aiContextMenuActionRef.current = (intent: AiQuickActionIntent, prompt: string) => {
-      if (sourceSurfaceActive) return;
+      if (sourceSurfaceActive || readOnlyMode) return;
 
       const selection = explicitAiTextSelection(getActiveAiSelection()) ?? explicitAiTextSelection(getEditorSelection());
       if (!selection) return;
@@ -754,6 +768,7 @@ export default function App() {
     getActiveAiSelection,
     holdAiSelection,
     openAiCommand,
+    readOnlyMode,
     sourceSurfaceActive,
     submitAiCommandPrompt,
     updateActiveAiSelection,
@@ -763,12 +778,12 @@ export default function App() {
     return aiContextMenuActionRef.current?.(intent, prompt);
   }, []);
   const getAiContextMenuAvailable = useCallback(() => {
-    if (sourceSurfaceActive) return false;
+    if (sourceSurfaceActive || readOnlyMode) return false;
 
     const selection = explicitAiTextSelection(getActiveAiSelection()) ?? explicitAiTextSelection(getEditorSelection());
 
     return Boolean(selection);
-  }, [getActiveAiSelection, getEditorSelection, sourceSurfaceActive]);
+  }, [getActiveAiSelection, getEditorSelection, readOnlyMode, sourceSurfaceActive]);
   const handleAiCommandToggle = useCallback(() => {
     setAiSelectionToolbarAnchor(null);
 
@@ -777,7 +792,7 @@ export default function App() {
       return;
     }
 
-    if (sourceSurfaceActive) return;
+    if (sourceSurfaceActive || readOnlyMode) return;
 
     const selection = aiCommandTextSelection(getActiveAiSelection()) ?? aiCommandTextSelection(getEditorSelection());
     if (!selection) return;
@@ -791,6 +806,7 @@ export default function App() {
     handleAiCommandClose,
     holdAiSelection,
     openAiCommand,
+    readOnlyMode,
     sourceSurfaceActive,
     updateActiveAiSelection
   ]);
@@ -809,6 +825,7 @@ export default function App() {
   }, [interruptAiCommandPrompt]);
   const aiSelectionToolbarVisible =
     !sourceSurfaceActive &&
+    !readOnlyMode &&
     Boolean(aiSelectionToolbarAnchor) &&
     activeAiSelection?.source === "selection" &&
     Boolean(activeAiSelection.text.trim()) &&
@@ -821,9 +838,11 @@ export default function App() {
     handleAiCommandToggle();
   }, [handleAiCommandToggle]);
   const handleAiSelectionToolbarAction = useCallback((intent: AiQuickActionIntent, prompt: string) => {
+    if (readOnlyMode) return;
+
     setAiSelectionToolbarAnchor(null);
     handleAiContextMenuAction(intent, prompt);
-  }, [handleAiContextMenuAction]);
+  }, [handleAiContextMenuAction, readOnlyMode]);
   useDeferredAiSelectionReveal({
     active: aiCommandVisible,
     bottomInset: aiCommandOverlayInset,
@@ -832,6 +851,8 @@ export default function App() {
   });
   const saveDocumentAs = useCallback(() => saveCurrentDocument(true), [saveCurrentDocument]);
   const handleApplyAiResult = useCallback((restoredResult?: AiDiffResult | null, previewId?: string) => {
+    if (readOnlyMode) return;
+
     const result = restoredResult ?? aiResults.at(-1) ?? null;
     if (!result) {
       console.warn("[markra-ai-preview] apply ignored: no pending result", {
@@ -874,7 +895,7 @@ export default function App() {
       editor.clearAiSelection();
       handleAiCommandClose();
     }
-  }, [aiResults, editor, handleAiCommandClose, updateAiResults]);
+  }, [aiResults, editor, handleAiCommandClose, readOnlyMode, updateAiResults]);
   const handleRejectAiResult = useCallback((result?: AiDiffResult | null, previewId?: string) => {
     editor.clearAiSelection();
     editor.clearAiPreview(result ?? undefined, { previewId });
@@ -888,6 +909,8 @@ export default function App() {
     navigator.clipboard?.writeText(result.replacement);
   }, [aiResults]);
   const handleSaveClipboardImage = useCallback(async (image: File) => {
+    if (readOnlyMode) return null;
+
     const result = await saveEditorImage({
       documentPath: document.path,
       image,
@@ -929,9 +952,11 @@ export default function App() {
     }
 
     return result.image;
-  }, [document.path, editorPreferences.preferences, refreshMarkdownFileTree, translate]);
+  }, [document.path, editorPreferences.preferences, readOnlyMode, refreshMarkdownFileTree, translate]);
 
   const handleSaveRemoteClipboardImage = useCallback(async (image: RemoteClipboardImage) => {
+    if (readOnlyMode) return null;
+
     const downloadedImage = await downloadNativeWebImage({ src: image.src }).catch(() => null);
     if (!downloadedImage) {
       showAppToast({
@@ -942,7 +967,7 @@ export default function App() {
     }
 
     return handleSaveClipboardImage(downloadedImage);
-  }, [handleSaveClipboardImage, translate]);
+  }, [handleSaveClipboardImage, readOnlyMode, translate]);
 
   useEffect(() => {
     const storedWidth = editorPreferences.preferences.contentWidthPx ?? null;
@@ -1260,14 +1285,17 @@ export default function App() {
   }, [updateActiveAiSelection]);
   const handleVisualMarkdownChange = useCallback((content: string) => {
     if (sourceToVisualSyncingRef.current) return;
+    if (readOnlyMode) return;
 
     if (splitMode) setActiveEditorSurface("visual");
     handleMarkdownChange(content);
-  }, [handleMarkdownChange, splitMode]);
+  }, [handleMarkdownChange, readOnlyMode, splitMode]);
   const handleSourceMarkdownChange = useCallback((content: string) => {
+    if (readOnlyMode) return;
+
     if (splitMode) setActiveEditorSurface("source");
     handleMarkdownChange(content);
-  }, [handleMarkdownChange, splitMode]);
+  }, [handleMarkdownChange, readOnlyMode, splitMode]);
   const syncSplitPaneScroll = useCallback((sourceSurface: EditorSurface, event: ReactUIEvent<HTMLElement>) => {
     if (!splitMode) return;
 
@@ -1308,22 +1336,28 @@ export default function App() {
     syncSplitPaneScroll("visual", event);
   }, [activeTabId, saveDocumentTabViewState, syncSplitPaneScroll]);
   const syncVisualMarkdownAfterEditorCommand = useCallback(() => {
-    if (!splitMode) return;
+    if (readOnlyMode || !splitMode) return;
 
     handleVisualMarkdownChange(getEditorCurrentMarkdown(document.content));
-  }, [document.content, getEditorCurrentMarkdown, handleVisualMarkdownChange, splitMode]);
+  }, [document.content, getEditorCurrentMarkdown, handleVisualMarkdownChange, readOnlyMode, splitMode]);
   const handleInsertMarkdownSnippet = useCallback((...args: Parameters<typeof insertEditorMarkdownSnippet>) => {
+    if (readOnlyMode) return;
+
     insertEditorMarkdownSnippet(...args);
     syncVisualMarkdownAfterEditorCommand();
-  }, [insertEditorMarkdownSnippet, syncVisualMarkdownAfterEditorCommand]);
+  }, [insertEditorMarkdownSnippet, readOnlyMode, syncVisualMarkdownAfterEditorCommand]);
   const handleInsertMarkdownTable = useCallback(() => {
+    if (readOnlyMode) return;
+
     insertEditorMarkdownTable();
     syncVisualMarkdownAfterEditorCommand();
-  }, [insertEditorMarkdownTable, syncVisualMarkdownAfterEditorCommand]);
+  }, [insertEditorMarkdownTable, readOnlyMode, syncVisualMarkdownAfterEditorCommand]);
   const handleRunEditorShortcut = useCallback((...args: Parameters<typeof runEditorShortcut>) => {
+    if (readOnlyMode) return;
+
     runEditorShortcut(...args);
     syncVisualMarkdownAfterEditorCommand();
-  }, [runEditorShortcut, syncVisualMarkdownAfterEditorCommand]);
+  }, [readOnlyMode, runEditorShortcut, syncVisualMarkdownAfterEditorCommand]);
   useEffect(() => {
     exportContextRef.current = {
       activeImageFile: Boolean(activeImageFile),
@@ -1527,6 +1561,7 @@ export default function App() {
     toggleAiAgent: handleAiAgentToggle,
     toggleAiCommand: handleAiCommandToggle,
     toggleMarkdownFiles: handleFileTreeToggle,
+    toggleReadOnlyMode: handleReadOnlyModeToggle,
     toggleSourceMode: handleEditorModeToggle
   });
 
@@ -1547,6 +1582,7 @@ export default function App() {
     toggleAiAgent: handleAiAgentToggle,
     toggleAiCommand: handleAiCommandToggle,
     toggleMarkdownFiles: handleFileTreeToggle,
+    toggleReadOnlyMode: handleReadOnlyModeToggle,
     toggleSourceMode: handleEditorModeToggle
   });
 
@@ -1814,6 +1850,7 @@ export default function App() {
                           onSaveClipboardImage={handleSaveClipboardImage}
                           onSaveRemoteClipboardImage={handleSaveRemoteClipboardImage}
                           openExternalUrl={handleOpenEditorLink}
+                          readOnly={readOnlyMode}
                           onTextSelectionChange={handleTextSelectionChange}
                           resolveImageSrc={resolveImageSrc}
                           revision={document.revision}
@@ -1850,6 +1887,7 @@ export default function App() {
                           onContentWidthChange={handleEditorContentWidthChange}
                           onContentWidthResizeEnd={handleEditorContentWidthResizeEnd}
                           onScroll={handleSourcePaneScroll}
+                          readOnly={readOnlyMode}
                           scrollRef={sourceScrollRef}
                           topInset="titlebar"
                         />
@@ -1868,6 +1906,7 @@ export default function App() {
                       onContentWidthChange={handleEditorContentWidthChange}
                       onContentWidthResizeEnd={handleEditorContentWidthResizeEnd}
                       onScroll={handleSourcePaneScroll}
+                      readOnly={readOnlyMode}
                       scrollRef={sourceScrollRef}
                       topInset="titlebar"
                     />
@@ -1891,6 +1930,7 @@ export default function App() {
                       onSaveClipboardImage={handleSaveClipboardImage}
                       onSaveRemoteClipboardImage={handleSaveRemoteClipboardImage}
                       openExternalUrl={handleOpenEditorLink}
+                      readOnly={readOnlyMode}
                       onTextSelectionChange={handleTextSelectionChange}
                       resolveImageSrc={resolveImageSrc}
                       revision={document.revision}
@@ -1903,6 +1943,7 @@ export default function App() {
                   <QuietStatus
                     dirty={document.dirty}
                     language={appLanguage.language}
+                    readOnly={readOnlyMode}
                     showWordCount={editorPreferences.preferences.showWordCount}
                     wordCount={wordCount}
                   />

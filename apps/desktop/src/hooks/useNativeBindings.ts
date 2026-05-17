@@ -40,6 +40,7 @@ type NativeMenuHandlerOptions = {
   toggleAiAgent?: () => unknown | Promise<unknown>;
   toggleAiCommand?: () => unknown | Promise<unknown>;
   toggleMarkdownFiles?: () => unknown | Promise<unknown>;
+  toggleReadOnlyMode?: () => unknown | Promise<unknown>;
   toggleSourceMode?: () => unknown | Promise<unknown>;
 };
 
@@ -55,6 +56,7 @@ type ApplicationShortcutOptions = {
   toggleAiAgent?: () => unknown | Promise<unknown>;
   toggleAiCommand?: () => unknown | Promise<unknown>;
   toggleMarkdownFiles?: () => unknown | Promise<unknown>;
+  toggleReadOnlyMode?: () => unknown | Promise<unknown>;
   toggleSourceMode?: () => unknown | Promise<unknown>;
 };
 
@@ -76,6 +78,7 @@ export function useNativeMenuHandlers({
   toggleAiAgent,
   toggleAiCommand,
   toggleMarkdownFiles,
+  toggleReadOnlyMode,
   toggleSourceMode
 }: NativeMenuHandlerOptions) {
   const normalizedMarkdownShortcuts = useMemo(
@@ -100,6 +103,7 @@ export function useNativeMenuHandlers({
     toggleAiAgent,
     toggleAiCommand,
     toggleMarkdownFiles,
+    toggleReadOnlyMode,
     toggleSourceMode
   });
   latestOptionsRef.current = {
@@ -120,6 +124,7 @@ export function useNativeMenuHandlers({
     toggleAiAgent,
     toggleAiCommand,
     toggleMarkdownFiles,
+    toggleReadOnlyMode,
     toggleSourceMode
   };
 
@@ -156,6 +161,7 @@ export function useNativeMenuHandlers({
       toggleAiAgent: () => latestOptionsRef.current.toggleAiAgent?.(),
       toggleAiCommand: () => latestOptionsRef.current.toggleAiCommand?.(),
       toggleMarkdownFiles: () => latestOptionsRef.current.toggleMarkdownFiles?.(),
+      toggleReadOnlyMode: () => latestOptionsRef.current.toggleReadOnlyMode?.(),
       toggleSourceMode: () => latestOptionsRef.current.toggleSourceMode?.()
     }),
     []
@@ -283,6 +289,7 @@ export function useApplicationShortcuts({
   toggleAiAgent,
   toggleAiCommand,
   toggleMarkdownFiles,
+  toggleReadOnlyMode,
   toggleSourceMode
 }: ApplicationShortcutOptions) {
   const normalizedMarkdownShortcuts = useMemo(
@@ -299,7 +306,8 @@ export function useApplicationShortcuts({
         [normalizedMarkdownShortcuts.toggleMarkdownFiles, toggleMarkdownFiles],
         [normalizedMarkdownShortcuts.toggleAiAgent, toggleAiAgent],
         [normalizedMarkdownShortcuts.toggleAiCommand, toggleAiCommand],
-        [normalizedMarkdownShortcuts.toggleSourceMode, toggleSourceMode]
+        [normalizedMarkdownShortcuts.toggleSourceMode, toggleSourceMode],
+        [normalizedMarkdownShortcuts.toggleReadOnlyMode, toggleReadOnlyMode]
       ];
 
       for (const [shortcut, handler] of configurableActions) {
@@ -354,6 +362,7 @@ export function useApplicationShortcuts({
     toggleAiAgent,
     toggleAiCommand,
     toggleMarkdownFiles,
+    toggleReadOnlyMode,
     toggleSourceMode
   ]);
 }

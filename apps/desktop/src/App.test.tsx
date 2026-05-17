@@ -2530,6 +2530,33 @@ describe("Markra workspace", () => {
     expect(await screen.findByLabelText("Markdown editor")).toHaveAttribute("data-editor-engine", "milkdown");
   });
 
+  it("toggles read-only mode from the keyboard shortcut and marks the status area", async () => {
+    const { container } = renderApp();
+
+    expect(await screen.findByText("Welcome to Markra")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "l", altKey: true, metaKey: true });
+
+    expect(screen.getByText("read-only")).toBeInTheDocument();
+    expect(container.querySelector(".ProseMirror")).toHaveAttribute("contenteditable", "false");
+
+    fireEvent.keyDown(window, { key: "l", altKey: true, metaKey: true });
+
+    expect(screen.queryByText("read-only")).not.toBeInTheDocument();
+  });
+
+  it("keeps source mode read-only while read-only mode is active", async () => {
+    renderApp();
+
+    expect(await screen.findByText("Welcome to Markra")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "s", altKey: true, metaKey: true });
+    fireEvent.keyDown(window, { key: "l", altKey: true, metaKey: true });
+
+    expect(await screen.findByRole("textbox", { name: "Markdown source" })).toHaveAttribute("readonly");
+    expect(screen.queryByLabelText("Unsaved changes")).not.toBeInTheDocument();
+  });
+
   it("keeps a clean file unmodified when toggling markdown source mode without edits", async () => {
     const originalContent = "Native file\n===========\n\nOpened from disk.";
     mockOpenMarkdownFile({

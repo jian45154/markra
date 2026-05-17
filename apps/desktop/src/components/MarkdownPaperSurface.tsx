@@ -54,6 +54,7 @@ export type MarkdownPaperSurfaceProps = {
   onSaveClipboardImage?: SaveClipboardImage;
   onSaveRemoteClipboardImage?: SaveRemoteClipboardImage;
   openExternalUrl?: (url: string) => unknown;
+  readOnly?: boolean;
   onTextSelectionChange?: (selection: AiSelectionContext | null) => unknown;
   resolveImageSrc?: (src: string) => string;
   workspaceFiles?: MarkdownDocumentLinkFile[];
@@ -85,6 +86,25 @@ function MilkdownInstanceBridge({ autoFocus, onEditorReady }: Pick<MarkdownPaper
   return null;
 }
 
+function MilkdownReadOnlyBridge({ readOnly = false }: Pick<MarkdownPaperSurfaceProps, "readOnly">) {
+  const [loading, getEditor] = useInstance();
+
+  useEffect(() => {
+    if (loading) return;
+
+    const editor = getEditor();
+    editor?.action((ctx) => {
+      const view = ctx.get(editorViewCtx);
+      view.setProps({
+        editable: () => !readOnly
+      });
+      view.dom.setAttribute("aria-readonly", readOnly ? "true" : "false");
+    });
+  }, [getEditor, loading, readOnly]);
+
+  return null;
+}
+
 function MilkdownEditorSurface({
   autoFocus,
   documentPath,
@@ -96,6 +116,7 @@ function MilkdownEditorSurface({
   onSaveClipboardImage,
   onSaveRemoteClipboardImage,
   openExternalUrl,
+  readOnly = false,
   onTextSelectionChange,
   resolveImageSrc,
   workspaceFiles
@@ -106,6 +127,7 @@ function MilkdownEditorSurface({
   const onSaveClipboardImageRef = useRef(onSaveClipboardImage);
   const onSaveRemoteClipboardImageRef = useRef(onSaveRemoteClipboardImage);
   const onTextSelectionChangeRef = useRef(onTextSelectionChange);
+  const readOnlyRef = useRef(readOnly);
   const workspaceFilesRef = useRef(workspaceFiles ?? []);
   const externalLinkOpeningEnabled = Boolean(openExternalUrl);
   const markdownDocumentLabel = t(language, "app.markdownDocument");
@@ -177,6 +199,10 @@ function MilkdownEditorSurface({
   }, [onTextSelectionChange]);
 
   useEffect(() => {
+    readOnlyRef.current = readOnly;
+  }, [readOnly]);
+
+  useEffect(() => {
     workspaceFilesRef.current = workspaceFiles ?? [];
   }, [workspaceFiles]);
 
@@ -191,8 +217,10 @@ function MilkdownEditorSurface({
             attributes: {
               ...options.attributes,
               "aria-label": markdownDocumentLabel,
+              "aria-readonly": readOnlyRef.current ? "true" : "false",
               spellcheck: "true"
-            }
+            },
+            editable: () => !readOnlyRef.current
           }));
           ctx.get(listenerCtx).updated((editorCtx, doc) => {
             try {
@@ -293,6 +321,7 @@ function MilkdownEditorSurface({
   return (
     <>
       <Milkdown />
+      <MilkdownReadOnlyBridge readOnly={readOnly} />
       <MilkdownInstanceBridge autoFocus={autoFocus} onEditorReady={onEditorReady} />
     </>
   );

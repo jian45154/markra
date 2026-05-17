@@ -774,6 +774,7 @@ describe("KeyboardShortcutsSettings", () => {
     expect(screen.getByRole("button", { name: "Toggle Markra AI shortcut" })).toHaveTextContent("⌘+⌥+J");
     expect(screen.getByRole("button", { name: "AI writing command shortcut" })).toHaveTextContent("⌘+⇧+J");
     expect(screen.getByRole("button", { name: "Switch to source mode shortcut" })).toHaveTextContent("⌘+⌥+S");
+    expect(screen.getByRole("button", { name: "Toggle read-only mode shortcut" })).toHaveTextContent("⌘+⌥+L");
     expect(screen.getByRole("button", { name: "Link shortcut" })).toHaveTextContent("⌘+K");
     expect(screen.getByRole("button", { name: "Bold shortcut" })).toHaveTextContent("⌘+B");
     expect(screen.queryByText("Mod+B")).not.toBeInTheDocument();
@@ -847,6 +848,7 @@ describe("KeyboardShortcutsSettings", () => {
     expect(screen.getByRole("button", { name: "Toggle Markra AI shortcut" })).toHaveTextContent("Ctrl+Alt+J");
     expect(screen.getByRole("button", { name: "AI writing command shortcut" })).toHaveTextContent("Ctrl+Shift+J");
     expect(screen.getByRole("button", { name: "Switch to source mode shortcut" })).toHaveTextContent("Ctrl+Alt+S");
+    expect(screen.getByRole("button", { name: "Toggle read-only mode shortcut" })).toHaveTextContent("Ctrl+Alt+L");
     expect(screen.getByRole("button", { name: "Link shortcut" })).toHaveTextContent("Ctrl+K");
     expect(screen.getByRole("button", { name: "Strikethrough shortcut" })).toHaveTextContent("Ctrl+Shift+X");
   });

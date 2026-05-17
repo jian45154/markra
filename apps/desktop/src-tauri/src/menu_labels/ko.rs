@@ -30,6 +30,7 @@ pub(super) const LABELS: MenuLabels = MenuLabels {
     toggle_file_list: "파일 목록 전환",
     toggle_markra_ai: "Markra AI 전환",
     ai_writing_command: "AI 쓰기 명령",
+    toggle_read_only_mode: "읽기 전용 모드 전환",
     toggle_source_mode: "소스 모드 전환",
     bold: "굵게",
     italic: "기울임",

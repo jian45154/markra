@@ -62,6 +62,7 @@ export type NativeMenuCommand =
   | "toggleMarkdownFiles"
   | "toggleAiAgent"
   | "toggleAiCommand"
+  | "toggleReadOnlyMode"
   | "toggleSourceMode";
 
 type NativeMenuCommandPayload = {
@@ -89,6 +90,7 @@ const nativeMarkdownShortcutCommands: Partial<Record<MarkdownShortcutAction, Nat
   toggleAiAgent: "toggleAiAgent",
   toggleAiCommand: "toggleAiCommand",
   toggleMarkdownFiles: "toggleMarkdownFiles",
+  toggleReadOnlyMode: "toggleReadOnlyMode",
   toggleSourceMode: "toggleSourceMode"
 };
 

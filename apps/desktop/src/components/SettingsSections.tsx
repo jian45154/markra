@@ -386,6 +386,7 @@ const markdownShortcutLabelKeys: Record<MarkdownShortcutAction, I18nKey> = {
   toggleAiAgent: "app.toggleAiAgent",
   toggleAiCommand: "app.aiCommandDialog",
   toggleMarkdownFiles: "app.toggleMarkdownFiles",
+  toggleReadOnlyMode: "app.toggleReadOnlyMode",
   toggleSourceMode: "app.switchToSourceMode"
 };
 const titlebarActionVisibleClassName =
@@ -402,7 +403,7 @@ const keyboardShortcutSections: Array<{
 }> = [
   {
     labelKey: "settings.editor.shortcutsGroupApp",
-    actions: ["toggleMarkdownFiles", "toggleAiAgent", "toggleAiCommand", "toggleSourceMode"]
+    actions: ["toggleMarkdownFiles", "toggleAiAgent", "toggleAiCommand", "toggleSourceMode", "toggleReadOnlyMode"]
   },
   {
     labelKey: "settings.categories.editor",

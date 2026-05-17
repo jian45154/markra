@@ -255,6 +255,12 @@ fn create_application_menu_for_language<R: tauri::Runtime>(
         labels.ai_writing_command,
         &menu_accelerator(accelerators, "toggleAiCommand", "CmdOrCtrl+Shift+J"),
     )?;
+    let toggle_read_only_mode = app_menu_item(
+        app,
+        "toggleReadOnlyMode",
+        labels.toggle_read_only_mode,
+        &menu_accelerator(accelerators, "toggleReadOnlyMode", "CmdOrCtrl+Alt+L"),
+    )?;
     let toggle_source_mode = app_menu_item(
         app,
         "toggleSourceMode",
@@ -309,6 +315,7 @@ fn create_application_menu_for_language<R: tauri::Runtime>(
             &toggle_file_list,
             &toggle_markra_ai,
             &ai_writing_command,
+            &toggle_read_only_mode,
             &toggle_source_mode,
         ])
         .build()?;
@@ -383,6 +390,7 @@ pub(crate) fn is_frontend_menu_command(command: &str) -> bool {
             | "toggleMarkdownFiles"
             | "toggleAiAgent"
             | "toggleAiCommand"
+            | "toggleReadOnlyMode"
             | "toggleSourceMode"
     )
 }
@@ -417,6 +425,7 @@ mod tests {
         assert!(is_frontend_menu_command("toggleMarkdownFiles"));
         assert!(is_frontend_menu_command("toggleAiAgent"));
         assert!(is_frontend_menu_command("toggleAiCommand"));
+        assert!(is_frontend_menu_command("toggleReadOnlyMode"));
         assert!(is_frontend_menu_command("toggleSourceMode"));
         assert!(!is_frontend_menu_command("markra:file"));
         assert!(!is_frontend_menu_command("copy"));

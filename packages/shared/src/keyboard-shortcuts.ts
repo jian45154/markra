@@ -8,6 +8,7 @@ export const keyboardShortcutActions = [
   "toggleAiAgent",
   "toggleAiCommand",
   "toggleSourceMode",
+  "toggleReadOnlyMode",
   "bold",
   "italic",
   "strikethrough",
@@ -64,6 +65,7 @@ export const defaultKeyboardShortcuts: KeyboardShortcutBindings = {
   toggleAiAgent: "Mod+Alt+J",
   toggleAiCommand: "Mod+Shift+J",
   toggleMarkdownFiles: "Mod+Shift+M",
+  toggleReadOnlyMode: "Mod+Alt+L",
   toggleSourceMode: "Mod+Alt+S"
 };
 

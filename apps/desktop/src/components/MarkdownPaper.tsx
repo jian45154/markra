@@ -33,6 +33,7 @@ type MarkdownPaperProps = {
   onSaveClipboardImage?: MarkdownPaperSurfaceProps["onSaveClipboardImage"];
   onSaveRemoteClipboardImage?: MarkdownPaperSurfaceProps["onSaveRemoteClipboardImage"];
   openExternalUrl?: MarkdownPaperSurfaceProps["openExternalUrl"];
+  readOnly?: MarkdownPaperSurfaceProps["readOnly"];
   onTextSelectionChange?: MarkdownPaperSurfaceProps["onTextSelectionChange"];
   resolveImageSrc?: MarkdownPaperSurfaceProps["resolveImageSrc"];
   revision: number;
@@ -64,6 +65,7 @@ export function MarkdownPaper({
   onSaveClipboardImage,
   onSaveRemoteClipboardImage,
   openExternalUrl,
+  readOnly = false,
   onTextSelectionChange,
   resolveImageSrc,
   revision,
@@ -115,6 +117,7 @@ export function MarkdownPaper({
           onSaveClipboardImage={onSaveClipboardImage}
           onSaveRemoteClipboardImage={onSaveRemoteClipboardImage}
           openExternalUrl={openExternalUrl}
+          readOnly={readOnly}
           onTextSelectionChange={onTextSelectionChange}
           resolveImageSrc={resolveImageSrc}
           workspaceFiles={workspaceFiles}

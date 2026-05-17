@@ -23,6 +23,7 @@ type MarkdownSourceEditorProps = {
   onContentWidthResizeEnd?: () => unknown;
   onContentWidthResizeStart?: () => unknown;
   onScroll?: (event: UIEvent<HTMLElement>) => unknown;
+  readOnly?: boolean;
   scrollRef?: Ref<HTMLElement>;
   topInset?: "tabs" | "titlebar";
 };
@@ -173,6 +174,7 @@ export function MarkdownSourceEditor({
   onContentWidthResizeEnd,
   onContentWidthResizeStart,
   onScroll,
+  readOnly = false,
   scrollRef,
   topInset = "titlebar"
 }: MarkdownSourceEditorProps) {
@@ -183,6 +185,8 @@ export function MarkdownSourceEditor({
     maxWidth: `${resolvedContentWidth}px`
   } satisfies CSSProperties;
   const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    if (readOnly) return;
+
     onChange(event.currentTarget.value);
   };
   const topInsetClassName = topInset === "tabs" ? "pt-24 max-[900px]:pt-20" : "pt-14 max-[900px]:pt-10";
@@ -220,6 +224,7 @@ export function MarkdownSourceEditor({
             className="markdown-source-input absolute inset-0 block h-full min-h-full w-full resize-none overflow-hidden border-0 bg-transparent p-0 font-mono text-[0.94em] leading-[inherit] tracking-normal text-transparent outline-none placeholder:text-(--text-secondary) focus:outline-none"
             aria-label={t(language, "app.markdownSource")}
             autoFocus={autoFocus}
+            readOnly={readOnly}
             spellCheck={false}
             value={content}
             onChange={handleChange}

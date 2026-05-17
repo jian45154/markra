@@ -91,6 +91,7 @@ describe("useNativeMenuHandlers", () => {
     const toggleAiAgent = vi.fn();
     const toggleAiCommand = vi.fn();
     const toggleMarkdownFiles = vi.fn();
+    const toggleReadOnlyMode = vi.fn();
     const toggleSourceMode = vi.fn();
     const { result } = renderHook(() =>
       useNativeMenuHandlers({
@@ -100,6 +101,7 @@ describe("useNativeMenuHandlers", () => {
         toggleAiAgent,
         toggleAiCommand,
         toggleMarkdownFiles,
+        toggleReadOnlyMode,
         toggleSourceMode
       })
     );
@@ -110,12 +112,14 @@ describe("useNativeMenuHandlers", () => {
     result.current.toggleAiAgent?.();
     result.current.toggleAiCommand?.();
     result.current.toggleSourceMode?.();
+    result.current.toggleReadOnlyMode?.();
 
     expect(closeDocument).toHaveBeenCalledTimes(1);
     expect(checkForUpdates).toHaveBeenCalledTimes(1);
     expect(toggleMarkdownFiles).toHaveBeenCalledTimes(1);
     expect(toggleAiAgent).toHaveBeenCalledTimes(1);
     expect(toggleAiCommand).toHaveBeenCalledTimes(1);
+    expect(toggleReadOnlyMode).toHaveBeenCalledTimes(1);
     expect(toggleSourceMode).toHaveBeenCalledTimes(1);
   });
 
@@ -200,6 +204,27 @@ describe("useApplicationShortcuts", () => {
     });
 
     expect(toggleSourceMode).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes the configurable read-only mode shortcut", () => {
+    const toggleReadOnlyMode = vi.fn();
+    renderHook(() =>
+      useApplicationShortcuts({
+        ...baseOptions,
+        markdownShortcuts: {
+          toggleReadOnlyMode: "Mod+Alt+R"
+        },
+        toggleReadOnlyMode
+      })
+    );
+
+    fireEvent.keyDown(window, {
+      key: "r",
+      altKey: true,
+      metaKey: true
+    });
+
+    expect(toggleReadOnlyMode).toHaveBeenCalledTimes(1);
   });
 
   it("closes the current document from the default close shortcut", () => {

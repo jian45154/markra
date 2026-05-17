@@ -292,6 +292,7 @@ describe("native menu", () => {
       toggleAiAgent: "Mod+Shift+Y",
       toggleAiCommand: "Mod+Alt+J",
       toggleMarkdownFiles: "Mod+Alt+M",
+      toggleReadOnlyMode: "Mod+Alt+R",
       toggleSourceMode: "Mod+Alt+U"
     });
 
@@ -300,6 +301,7 @@ describe("native menu", () => {
         toggleAiAgent: "CmdOrCtrl+Shift+Y",
         toggleAiCommand: "CmdOrCtrl+Alt+J",
         toggleMarkdownFiles: "CmdOrCtrl+Alt+M",
+        toggleReadOnlyMode: "CmdOrCtrl+Alt+R",
         toggleSourceMode: "CmdOrCtrl+Alt+U"
       },
       language: "en"
