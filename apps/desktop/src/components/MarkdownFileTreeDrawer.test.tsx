@@ -68,7 +68,7 @@ describe("MarkdownFileTreeDrawer", () => {
     expect(outlineSwitch).toContainElement(container.querySelector(".lucide-table-of-contents"));
   });
 
-  it("places the Windows sidebar toggle at the lower drawer edge", () => {
+  it("places open Windows sidebar controls inside a separated drawer footer", () => {
     const toggleMarkdownFiles = vi.fn();
     const { container } = render(
       <MarkdownFileTreeDrawer
@@ -86,10 +86,16 @@ describe("MarkdownFileTreeDrawer", () => {
     );
 
     const toggle = screen.getByRole("button", { name: "Toggle file list" });
+    const settings = screen.getByRole("button", { name: "Settings" });
+    const footer = container.querySelector(".markdown-file-tree-footer");
 
     expect(toggle).toHaveAttribute("aria-pressed", "true");
-    expect(toggle).toHaveClass("fixed", "bottom-3");
-    expect(toggle).toHaveStyle({ left: "300px" });
+    expect(footer).toHaveClass("shrink-0", "border-t");
+    expect(settings.closest(".markdown-file-tree-footer")).toBe(footer);
+    expect(toggle.closest(".markdown-file-tree-footer")).toBe(footer);
+    expect(settings).not.toHaveClass("fixed", "bottom-3", "left-3");
+    expect(toggle).not.toHaveClass("fixed", "bottom-3");
+    expect(toggle).not.toHaveStyle({ left: "300px" });
     expect(toggle).toContainElement(container.querySelector(".lucide-panel-left"));
     expect(container.querySelector(".markdown-file-tree")).toHaveClass("pt-0");
     expect(container.querySelector(".markdown-file-tree")).not.toHaveClass("pt-10");
