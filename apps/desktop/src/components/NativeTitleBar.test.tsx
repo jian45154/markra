@@ -618,9 +618,9 @@ describe("NativeTitleBar", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Open Markdown or Folder" }));
 
-    expect(screen.getByRole("menu", { name: "Open Markdown or Folder" })).toBeInTheDocument();
+    expect(screen.getByRole("menu", { name: "Open Markdown or Folder" })).toHaveClass("right-0");
     expect(screen.getByRole("menuitem", { name: "Open Markdown File" })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("menuitem", { name: "Open Folder" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Open Folder..." }));
 
     expect(openMarkdownFolder).toHaveBeenCalledTimes(1);
     expect(openMarkdown).not.toHaveBeenCalled();

@@ -75,6 +75,38 @@ describe("MarkdownFileTreeDrawer", () => {
     expect(container.querySelector(".markdown-file-tree-outline")).toContainElement(container.querySelector(".lucide-table-of-contents"));
   });
 
+  it("shows recent folders in a dedicated sidebar section", () => {
+    const openRecentFolder = vi.fn();
+    render(
+      <MarkdownFileTreeDrawer
+        currentPath="/vault/Untitled.md"
+        files={markdownFiles}
+        open
+        outlineItems={[]}
+        recentFolders={[
+          { name: "notes", path: "/mock-files/notes" },
+          { name: "test", path: "/mock-files/test" }
+        ]}
+        rootName="Obsidian Vault"
+        onOpenFile={() => {}}
+        onOpenRecentFolder={openRecentFolder}
+        onSelectOutlineItem={() => {}}
+      />
+    );
+
+    const recentSection = screen.getByRole("region", { name: "Recently used directories" });
+
+    expect(recentSection).toHaveClass("markdown-file-tree-recent-folders");
+    expect(within(recentSection).getByRole("button", { name: "notes" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Directory" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Open Folder..." })).not.toBeInTheDocument();
+    expect(screen.queryByRole("menu", { name: "Open Markdown or Folder" })).not.toBeInTheDocument();
+
+    fireEvent.click(within(recentSection).getByRole("button", { name: "notes" }));
+
+    expect(openRecentFolder).toHaveBeenCalledWith({ name: "notes", path: "/mock-files/notes" });
+  });
+
   it("collapses and restores the outline panel", () => {
     const { container } = render(
       <MarkdownFileTreeDrawer

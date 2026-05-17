@@ -28,6 +28,7 @@ import type { MarkdownOutlineItem } from "@markra/markdown";
 import type { NativeMarkdownFolderFile } from "../lib/tauri";
 import { showNativeMarkdownFileTreeContextMenu } from "../lib/tauri";
 import { resolveDesktopPlatform, type DesktopPlatform } from "../lib/platform";
+import type { RecentMarkdownFolder } from "../lib/settings/app-settings";
 
 type MarkdownFileTreeDrawerProps = {
   currentPath: string | null;
@@ -39,6 +40,7 @@ type MarkdownFileTreeDrawerProps = {
   open: boolean;
   outlineItems: MarkdownOutlineItem[];
   platform?: DesktopPlatform;
+  recentFolders?: readonly RecentMarkdownFolder[];
   rootPath?: string | null;
   rootName: string;
   width?: number;
@@ -46,6 +48,7 @@ type MarkdownFileTreeDrawerProps = {
   onCreateFolder?: (folderName: string, parentPath?: string | null) => unknown | Promise<unknown>;
   onDeleteFile?: (file: NativeMarkdownFolderFile) => unknown | Promise<unknown>;
   onOpenFile: (file: NativeMarkdownFolderFile) => unknown | Promise<unknown>;
+  onOpenRecentFolder?: (folder: RecentMarkdownFolder) => unknown | Promise<unknown>;
   onOpenSettings?: () => unknown | Promise<unknown>;
   onRenameFile?: (file: NativeMarkdownFolderFile, fileName: string) => unknown | Promise<unknown>;
   onResize?: (width: number) => unknown;
@@ -221,6 +224,7 @@ export function MarkdownFileTreeDrawer({
   open,
   outlineItems,
   platform = resolveDesktopPlatform(),
+  recentFolders = [],
   rootPath = null,
   rootName,
   width = 288,
@@ -228,6 +232,7 @@ export function MarkdownFileTreeDrawer({
   onCreateFolder,
   onDeleteFile,
   onOpenFile,
+  onOpenRecentFolder,
   onOpenSettings = () => {},
   onRenameFile,
   onResize,
@@ -269,6 +274,8 @@ export function MarkdownFileTreeDrawer({
   const folderActionsAvailable = fileCreationAvailable || folderCreationAvailable;
   const folderExpansionAvailable = folderPaths.length > 0;
   const allFoldersExpanded = folderExpansionAvailable && folderPaths.every((folderPath) => expandedFolders.has(folderPath));
+  const recentFolderChoices = recentFolders.slice(0, 5);
+  const recentFolderAreaVisible = recentFolderChoices.length > 0 && Boolean(onOpenRecentFolder);
   const filePanelStyle = outlineOpen ? { flex: `0 1 ${100 - outlineHeightPercent}%` } : undefined;
   const outlinePanelStyle = outlineOpen ? { flex: `0 1 ${outlineHeightPercent}%` } : undefined;
 
@@ -794,6 +801,38 @@ export function MarkdownFileTreeDrawer({
     )
   );
 
+  const renderFolderAccessArea = () => (
+    recentFolderAreaVisible ? (
+      <div className="shrink-0 border-b border-(--border-default) bg-(--bg-secondary) py-1">
+        {recentFolderAreaVisible && onOpenRecentFolder ? (
+          <section
+            className="markdown-file-tree-recent-folders px-2 py-1"
+            role="region"
+            aria-label={label("app.recentMarkdownFolders")}
+          >
+            <h3 className="m-0 px-2 pb-1 text-[11px] leading-4 font-[560] tracking-normal text-(--text-secondary)">
+              {label("app.recentMarkdownFolders")}
+            </h3>
+            <div className="space-y-0.5">
+              {recentFolderChoices.map((folder) => (
+                <button
+                  className="flex h-7 w-full cursor-pointer items-center gap-2 rounded-sm border-0 bg-transparent px-2 text-left text-[12px] leading-none text-(--text-secondary) hover:bg-(--bg-hover) hover:text-(--text-heading) focus-visible:bg-(--bg-hover) focus-visible:text-(--text-heading) focus-visible:outline-none"
+                  key={folder.path}
+                  type="button"
+                  title={folder.path}
+                  onClick={() => onOpenRecentFolder(folder)}
+                >
+                  <Folder aria-hidden="true" className="shrink-0" size={14} />
+                  <span className="min-w-0 truncate">{folder.name}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </div>
+    ) : null
+  );
+
   return (
     <>
       {!open ? (
@@ -873,6 +912,8 @@ export function MarkdownFileTreeDrawer({
             />
           </>
         ) : null}
+
+        {renderFolderAccessArea()}
 
         <div ref={fileTreeBodyRef} className="markdown-file-tree-body flex min-h-0 flex-1 flex-col">
           <section

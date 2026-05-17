@@ -23,6 +23,7 @@ import {
   mockedGetStoredExportSettings,
   mockedGetStoredEditorPreferences,
   mockedGetStoredLanguage,
+  mockedGetStoredRecentMarkdownFolders,
   mockedGetStoredTheme,
   mockedGetStoredWorkspaceState,
   mockedInstallNativeApplicationMenu,
@@ -56,6 +57,7 @@ import {
   mockedSaveStoredEditorPreferences,
   mockedSaveStoredExportSettings,
   mockedSaveStoredLanguage,
+  mockedSaveStoredRecentMarkdownFolder,
   mockedSaveStoredTheme,
   mockedSaveStoredWorkspaceState,
   mockedShowNativeMarkdownFileTreeContextMenu,
@@ -1102,7 +1104,7 @@ describe("Markra workspace", () => {
     renderApp();
 
     fireEvent.click(screen.getByRole("button", { name: "Open Markdown or Folder" }));
-    fireEvent.click(await screen.findByRole("menuitem", { name: "Open Folder" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "Open Folder..." }));
 
     expect(await screen.findByRole("complementary", { name: "Markdown file tree" })).toBeInTheDocument();
     expect(screen.getAllByText("vault").length).toBeGreaterThan(0);
@@ -1110,6 +1112,32 @@ describe("Markra workspace", () => {
     expect(mockedOpenNativeMarkdownFolder).toHaveBeenCalledTimes(1);
     expect(mockedListNativeMarkdownFilesForPath).toHaveBeenCalledWith(mockFolderPath);
     expect(mockedOpenNativeMarkdownPath).not.toHaveBeenCalled();
+  });
+
+  it("opens a remembered markdown folder from the sidebar recent folders area", async () => {
+    mockedGetStoredRecentMarkdownFolders.mockResolvedValue([
+      { name: "notes", path: "/mock-files/notes" }
+    ]);
+    mockedListNativeMarkdownFilesForPath.mockResolvedValue([
+      { name: "index.md", path: "/mock-files/notes/index.md", relativePath: "index.md" }
+    ]);
+
+    renderApp();
+
+    await waitFor(() => expect(mockedGetStoredRecentMarkdownFolders).toHaveBeenCalledTimes(1));
+    fireEvent.click(screen.getByRole("button", { name: "Toggle file list" }));
+    const recentSection = await screen.findByRole("region", { name: "Recently used directories" });
+    fireEvent.click(within(recentSection).getByRole("button", { name: "notes" }));
+
+    expect(await screen.findByRole("complementary", { name: "Markdown file tree" })).toBeInTheDocument();
+    expect(screen.getAllByText("notes").length).toBeGreaterThan(0);
+    expect(await screen.findByRole("button", { name: "index.md" })).toBeInTheDocument();
+    expect(mockedOpenNativeMarkdownFolder).not.toHaveBeenCalled();
+    expect(mockedListNativeMarkdownFilesForPath).toHaveBeenCalledWith("/mock-files/notes");
+    expect(mockedSaveStoredRecentMarkdownFolder).toHaveBeenCalledWith({
+      name: "notes",
+      path: "/mock-files/notes"
+    });
   });
 
   it("opens a markdown folder from the native application menu", async () => {

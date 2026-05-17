@@ -12,9 +12,11 @@ import {
   getStoredEditorPreferences,
   getStoredExportSettings,
   getStoredLanguage,
+  getStoredRecentMarkdownFolders,
   getStoredTheme,
   getStoredWebSearchSettings,
   getStoredWorkspaceState,
+  normalizeRecentMarkdownFolders,
   normalizeEditorPreferences,
   normalizeWebSearchSettings,
   normalizeExportSettings,
@@ -28,6 +30,7 @@ import {
   saveStoredEditorPreferences,
   saveStoredExportSettings,
   saveStoredLanguage,
+  saveStoredRecentMarkdownFolder,
   saveStoredTheme,
   saveStoredWebSearchSettings,
   saveStoredWorkspaceState,
@@ -832,6 +835,49 @@ describe("app settings", () => {
       folderName: "vault",
       folderPath: "/mock-files/vault"
     });
+    expect(store.save).toHaveBeenCalledTimes(1);
+  });
+
+  it("normalizes recently used markdown folders", () => {
+    expect(normalizeRecentMarkdownFolders([
+      { name: "notes", path: "/mock-files/notes" },
+      { name: "duplicate notes", path: "/mock-files/notes" },
+      { name: "", path: "/mock-files/research" },
+      { name: "blank path", path: " " },
+      null
+    ])).toEqual([
+      { name: "notes", path: "/mock-files/notes" },
+      { name: "research", path: "/mock-files/research" }
+    ]);
+  });
+
+  it("loads recently used markdown folders from settings", async () => {
+    store.get.mockResolvedValue([
+      { name: "notes", path: "/mock-files/notes" },
+      { name: "duplicate notes", path: "/mock-files/notes" }
+    ]);
+
+    await expect(getStoredRecentMarkdownFolders()).resolves.toEqual([
+      { name: "notes", path: "/mock-files/notes" }
+    ]);
+    expect(store.get).toHaveBeenCalledWith("recentMarkdownFolders");
+  });
+
+  it("prepends and persists a recently used markdown folder", async () => {
+    store.get.mockResolvedValue([
+      { name: "notes", path: "/mock-files/notes" },
+      { name: "vault old", path: "/mock-files/vault" }
+    ]);
+
+    await saveStoredRecentMarkdownFolder({
+      name: "vault",
+      path: "/mock-files/vault"
+    });
+
+    expect(store.set).toHaveBeenCalledWith("recentMarkdownFolders", [
+      { name: "vault", path: "/mock-files/vault" },
+      { name: "notes", path: "/mock-files/notes" }
+    ]);
     expect(store.save).toHaveBeenCalledTimes(1);
   });
 

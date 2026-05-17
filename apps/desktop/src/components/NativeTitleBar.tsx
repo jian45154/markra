@@ -125,7 +125,8 @@ export function NativeTitleBar({
   const [openMenuVisible, setOpenMenuVisible] = useState(false);
   const label = (key: Parameters<typeof t>[1]) => t(language, key);
   const themeActionLabel = theme === "dark" ? label("app.switchToLightTheme") : label("app.switchToDarkTheme");
-  const splitOpenChoiceAvailable = platform !== "macos" && Boolean(onOpenMarkdownFolder);
+  const openChoiceMenuAvailable = Boolean(onOpenMarkdownFolder) && platform !== "macos";
+  const openChoiceMenuAlignmentClassName = platform === "windows" ? "right-0" : "left-0";
   const titlebarSideSlotWidth = 164;
   const normalizedTitlebarActions = useMemo(() => normalizeTitlebarActions(titlebarActions), [titlebarActions]);
   const visibleTitlebarActionIds = useMemo(
@@ -219,7 +220,7 @@ export function NativeTitleBar({
   };
 
   const renderFixedOpenAction = (className = dimTitlebarIconButtonClassName) => {
-    if (!splitOpenChoiceAvailable || !onOpenMarkdownFolder) {
+    if (!openChoiceMenuAvailable || !onOpenMarkdownFolder) {
       return (
         <IconButton
           label={label("app.openMarkdownOrFolder")}
@@ -251,29 +252,45 @@ export function NativeTitleBar({
         </IconButton>
         {openMenuVisible ? (
           <PopoverSurface
-            className="absolute top-[calc(100%+6px)] right-0 z-40 grid w-52 gap-1 rounded-lg p-1"
+            className={`absolute top-[calc(100%+6px)] ${openChoiceMenuAlignmentClassName} z-40 w-52 overflow-hidden rounded-lg p-0`}
             open
             role="menu"
             aria-label={label("app.openMarkdownOrFolder")}
           >
-            <Button
-              className="w-full justify-start rounded-md text-left"
-              size="sm"
-              role="menuitem"
-              onClick={() => runOpenAction(onOpenMarkdown)}
+            <div className="px-1.5 py-1">
+              <Button
+                className="h-7 w-full justify-start rounded-sm border-transparent bg-transparent px-2 text-left text-[12px] font-[520] text-(--text-heading) hover:bg-(--bg-hover)"
+                size="sm"
+                role="menuitem"
+                variant="ghost"
+                onClick={() => runOpenAction(onOpenMarkdown)}
+              >
+                <FileText aria-hidden="true" className="shrink-0 text-(--text-secondary)" size={14} />
+                <span className="truncate">{label("app.openMarkdownFile")}</span>
+              </Button>
+            </div>
+            <div
+              className="border-t border-(--border-default) px-1.5 pt-1 pb-1.5"
+              role="group"
+              aria-label={label("app.markdownFolderSection")}
             >
-              <FileText aria-hidden="true" className="shrink-0 text-(--text-secondary)" size={14} />
-              <span className="truncate">{label("app.openMarkdownFile")}</span>
-            </Button>
-            <Button
-              className="w-full justify-start rounded-md text-left"
-              size="sm"
-              role="menuitem"
-              onClick={() => runOpenAction(onOpenMarkdownFolder)}
-            >
-              <FolderOpen aria-hidden="true" className="shrink-0 text-(--text-secondary)" size={14} />
-              <span className="truncate">{label("app.openFolder")}</span>
-            </Button>
+              <div
+                className="px-2 py-1 text-[11px] leading-4 font-medium text-(--text-secondary)"
+                role="presentation"
+              >
+                {label("app.markdownFolderSection")}
+              </div>
+              <Button
+                className="h-7 w-full justify-start rounded-sm border-transparent bg-transparent px-2 text-left text-[12px] font-[520] text-(--text-heading) hover:bg-(--bg-hover)"
+                size="sm"
+                role="menuitem"
+                variant="ghost"
+                onClick={() => runOpenAction(onOpenMarkdownFolder)}
+              >
+                <FolderOpen aria-hidden="true" className="shrink-0 text-(--text-secondary)" size={14} />
+                <span className="truncate">{label("app.openFolderDialog")}</span>
+              </Button>
+            </div>
           </PopoverSurface>
         ) : null}
       </div>
