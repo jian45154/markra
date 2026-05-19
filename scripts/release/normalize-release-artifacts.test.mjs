@@ -43,12 +43,31 @@ function readReleaseMatrixEntry(name) {
   return next === -1 ? workflow.slice(start) : workflow.slice(start, next);
 }
 
+function readReleaseStep(name) {
+  const workflow = fs.readFileSync(releaseWorkflowPath, "utf8");
+  const start = workflow.indexOf(`- name: ${name}`);
+
+  assert.notEqual(start, -1, `${name} release step should exist`);
+
+  const next = workflow.indexOf("\n      - name:", start + 1);
+  return next === -1 ? workflow.slice(start) : workflow.slice(start, next);
+}
+
 test("release workflow uses arm64 in Apple Silicon file names while keeping the Tauri updater platform", () => {
   const appleSiliconEntry = readReleaseMatrixEntry("macOS (Apple Silicon)");
 
   assert.match(appleSiliconEntry, /asset_arch:\s*arm64/);
   assert.match(appleSiliconEntry, /updater_platform:\s*darwin-aarch64/);
   assert.doesNotMatch(appleSiliconEntry, /asset_arch:\s*aarch64/);
+});
+
+test("release workflow excludes Wayland client from Linux AppImage bundling", () => {
+  const buildStep = readReleaseStep("Build and bundle app");
+  const verifyStep = readReleaseStep("Verify Linux AppImage library policy");
+
+  assert.match(buildStep, /LINUXDEPLOY_EXCLUDED_LIBRARIES:\s*libwayland-client\.so\*/);
+  assert.match(verifyStep, /if:\s*matrix\.os == 'ubuntu-22\.04'/);
+  assert.match(verifyStep, /verify-linux-appimage-libraries\.mjs/);
 });
 
 test("normalize-release-artifacts adds macOS platform labels to updater and dmg assets", () => {

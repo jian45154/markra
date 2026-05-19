@@ -209,11 +209,19 @@ jobs:
         id: tauri_build
         uses: tauri-apps/tauri-action@v0.6.0
         env:
+          LINUXDEPLOY_EXCLUDED_LIBRARIES: libwayland-client.so*
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: ${{ env.DESKTOP_DIR }}
           args: ${{ matrix.args }} --config tauri.updater.conf.json
+
+      - name: Verify Linux AppImage library policy
+        if: matrix.os == 'ubuntu-22.04'
+        shell: bash
+        env:
+          APPIMAGE_APPDIR: ${{ env.DESKTOP_DIR }}/src-tauri/target/${{ matrix.target }}/release/bundle/appimage/${{ env.APP_PRODUCT_NAME }}.AppDir
+        run: node .release-scripts/scripts/release/verify-linux-appimage-libraries.mjs
 
       - name: Add macOS open helper to DMG
         if: startsWith(matrix.os, 'macos-')
