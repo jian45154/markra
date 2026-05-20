@@ -1,6 +1,18 @@
 import { readFileSync } from "node:fs";
 
 describe("editor stylesheet", () => {
+  it("uses theme-aware custom text cursors for editor text surfaces", () => {
+    const styles = readFileSync(`${process.cwd()}/src/styles.css`, "utf8");
+
+    expect(styles).toContain("--editor-text-cursor:");
+    expect(styles).toContain(".markdown-paper .ProseMirror");
+    expect(styles).toContain(".markdown-source-input");
+    expect(styles).toContain(".markdown-paper[data-editor-theme=\"solarized-dark\"]");
+    expect(styles).toContain("cursor: var(--editor-text-cursor)");
+    expect(styles).toContain("%231a1c1e");
+    expect(styles).toContain("%23ffffff");
+  });
+
   it("includes readable Markdown table styles", () => {
     const styles = readFileSync(`${process.cwd()}/src/styles.css`, "utf8");
 
@@ -358,7 +370,7 @@ describe("editor stylesheet", () => {
     expect(styles).toContain(".markdown-paper .markra-live-link-icon + .markra-live-link-icon");
     expect(styles).toContain("-webkit-user-drag: none");
     expect(styles).toContain("user-select: text");
-    expect(styles).toContain("@apply cursor-text text-(--editor-link-color) underline underline-offset-2");
+    expect(styles).toContain("cursor: var(--editor-text-cursor)");
     expect(styles).toContain(".markdown-paper .ProseMirror.markra-link-open-modifier-active a");
     expect(styles).toContain(".markdown-paper .ProseMirror.markra-link-open-modifier-active .markra-live-link-label");
     expect(styles).toContain("cursor: pointer");

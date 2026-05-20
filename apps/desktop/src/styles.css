@@ -604,9 +604,33 @@
     @apply px-2.5 py-2 text-[12px] leading-5 font-[560] text-(--text-secondary);
   }
 
+  .markdown-paper,
+  .markdown-source-paper {
+    --editor-text-cursor: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20width%3D%2724%27%20height%3D%2724%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M12%204v16M8.5%204h7M8.5%2020h7%27%20fill%3D%27none%27%20stroke%3D%27%23ffffff%27%20stroke-width%3D%274%27%20stroke-linecap%3D%27round%27/%3E%3Cpath%20d%3D%27M12%204v16M8.5%204h7M8.5%2020h7%27%20fill%3D%27none%27%20stroke%3D%27%231a1c1e%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E") 12 12, text;
+  }
+
+  [data-theme="dark"] .markdown-paper,
+  [data-theme="night"] .markdown-paper,
+  [data-theme="solarized-dark"] .markdown-paper,
+  [data-theme="nord"] .markdown-paper,
+  [data-theme="catppuccin-mocha"] .markdown-paper,
+  .markdown-paper[data-editor-theme="dark"],
+  .markdown-paper[data-editor-theme="night"],
+  .markdown-paper[data-editor-theme="solarized-dark"],
+  .markdown-paper[data-editor-theme="nord"],
+  .markdown-paper[data-editor-theme="catppuccin-mocha"],
+  [data-theme="dark"] .markdown-source-paper,
+  [data-theme="night"] .markdown-source-paper,
+  [data-theme="solarized-dark"] .markdown-source-paper,
+  [data-theme="nord"] .markdown-source-paper,
+  [data-theme="catppuccin-mocha"] .markdown-source-paper {
+    --editor-text-cursor: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20width%3D%2724%27%20height%3D%2724%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M12%204v16M8.5%204h7M8.5%2020h7%27%20fill%3D%27none%27%20stroke%3D%27%23000000%27%20stroke-width%3D%274%27%20stroke-linecap%3D%27round%27/%3E%3Cpath%20d%3D%27M12%204v16M8.5%204h7M8.5%2020h7%27%20fill%3D%27none%27%20stroke%3D%27%23ffffff%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E") 12 12, text;
+  }
+
   .markdown-paper [data-milkdown-root],
   .markdown-paper .ProseMirror {
     @apply min-h-[calc(100vh-176px)] outline-none;
+    cursor: var(--editor-text-cursor);
   }
 
   .markdown-paper .ProseMirror {
@@ -741,6 +765,7 @@
   .markdown-source-input {
     -webkit-text-fill-color: transparent;
     caret-color: var(--accent);
+    cursor: var(--editor-text-cursor);
   }
 
   .markdown-source-input::selection {
@@ -1681,13 +1706,15 @@
   }
 
   .markdown-paper a {
-    @apply cursor-text text-(--editor-link-color) underline underline-offset-2;
+    @apply text-(--editor-link-color) underline underline-offset-2;
+    cursor: var(--editor-text-cursor);
     -webkit-user-drag: none;
     user-select: text;
   }
 
   .markdown-paper .markra-live-link-label {
-    @apply cursor-text text-(--editor-link-color) underline underline-offset-2;
+    @apply text-(--editor-link-color) underline underline-offset-2;
+    cursor: var(--editor-text-cursor);
     -webkit-user-drag: none;
     user-select: text;
   }
@@ -1698,7 +1725,8 @@
   }
 
   .markdown-paper .markra-live-link-source-label {
-    @apply cursor-text text-(--editor-link-color) underline underline-offset-2;
+    @apply text-(--editor-link-color) underline underline-offset-2;
+    cursor: var(--editor-text-cursor);
   }
 
   .markdown-paper a[href]::after,
@@ -1763,6 +1791,7 @@
     -webkit-text-fill-color: transparent;
     box-shadow: none;
     caret-color: var(--text-primary);
+    cursor: var(--editor-text-cursor);
   }
 
   .markdown-paper .markra-html-node-source:focus {
@@ -1850,6 +1879,7 @@
   .markdown-paper .markra-image-node-source {
     @apply m-0 block w-full min-w-0 appearance-none rounded-none border-0 bg-transparent p-0 font-mono text-[0.95em] text-(--text-primary) outline-none;
     box-shadow: none;
+    cursor: var(--editor-text-cursor);
     line-height: inherit;
   }
 
@@ -1879,7 +1909,7 @@
   .markdown-paper .markra-math-render {
     color: var(--text-primary);
     letter-spacing: 0;
-    cursor: text;
+    cursor: var(--editor-text-cursor);
     user-select: text;
   }
 
