@@ -478,6 +478,32 @@ describe("native menu", () => {
     expect(findMenuItemById(latestMenuItems(), "markra:file-tree:open-to-side")).toBeNull();
   });
 
+  it("disables the native markdown file tree side-open action when unavailable for the target", async () => {
+    const openFileToSide = vi.fn();
+    const file = {
+      name: "README.md",
+      path: "/vault/README.md",
+      relativePath: "README.md"
+    };
+
+    await showNativeMarkdownFileTreeContextMenu({
+      createFile: vi.fn(),
+      createFolder: vi.fn(),
+      deleteFile: vi.fn(),
+      openFileToSide,
+      canOpenFileToSide: () => false,
+      renameFile: vi.fn()
+    }, "en", file);
+
+    const openToSide = menuItemById(latestMenuItems(), "markra:file-tree:open-to-side");
+
+    expect(openToSide).toMatchObject({ text: "Open to side", enabled: false });
+
+    openToSide.action?.("markra:file-tree:open-to-side");
+
+    expect(openFileToSide).not.toHaveBeenCalled();
+  });
+
   it("shows a native markdown file tree delete action for a folder target", async () => {
     const createFile = vi.fn();
     const createFolder = vi.fn();

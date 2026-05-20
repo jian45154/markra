@@ -19,6 +19,7 @@ import type { NativeMarkdownFolderFile } from "./file";
 export type NativeMenuHandlers = Partial<Record<NativeMenuCommand, () => unknown | Promise<unknown>>>;
 
 export type NativeMarkdownFileTreeContextMenuHandlers = {
+  canOpenFileToSide?: (file: NativeMarkdownFolderFile) => boolean;
   createFile?: () => unknown | Promise<unknown>;
   createFolder?: () => unknown | Promise<unknown>;
   deleteFile?: (file: NativeMarkdownFolderFile) => unknown | Promise<unknown>;
@@ -126,13 +127,15 @@ function customItem(
   id: string,
   text: string,
   accelerator: string | undefined,
-  handler: (() => unknown | Promise<unknown>) | undefined
+  handler: (() => unknown | Promise<unknown>) | undefined,
+  enabled = true
 ): MenuItemOptions {
   return {
     id,
     text,
     accelerator,
-    action: () => runNativeMenuAction(handler)
+    enabled,
+    action: enabled ? () => runNativeMenuAction(handler) : undefined
   };
 }
 
@@ -339,8 +342,15 @@ export function createNativeMarkdownFileTreeContextMenuItems(
 
   items.push(separator());
   if (!fileIsAsset && handlers.openFileToSide) {
+    const canOpenFileToSide = handlers.canOpenFileToSide?.(file) ?? true;
     items.push(
-      customItem("markra:file-tree:open-to-side", label("app.openDocumentToSide"), undefined, () => handlers.openFileToSide?.(file))
+      customItem(
+        "markra:file-tree:open-to-side",
+        label("app.openDocumentToSide"),
+        undefined,
+        canOpenFileToSide ? () => handlers.openFileToSide?.(file) : undefined,
+        canOpenFileToSide
+      )
     );
   }
   items.push(

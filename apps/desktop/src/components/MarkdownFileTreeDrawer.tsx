@@ -225,6 +225,7 @@ const minOutlineHeightPercent = 24;
 const maxOutlineHeightPercent = 72;
 const outlineResizeKeyboardStepPercent = 5;
 const outlineResizeFallbackHeight = 320;
+const fileTreeContextRowSelectionClassName = "select-none [-webkit-user-select:none]";
 
 export function MarkdownFileTreeDrawer({
   currentPath,
@@ -457,6 +458,7 @@ export function MarkdownFileTreeDrawer({
 
     showNativeMarkdownFileTreeContextMenu(
       {
+        canOpenFileToSide: (targetFile) => targetFile.path !== currentPath,
         createFile: fileCreationAvailable ? () => startCreatingFile(createTargetFolderPath) : undefined,
         createFolder: folderCreationAvailable ? () => startCreatingFolder(createTargetFolderPath) : undefined,
         deleteFile: (targetFile) => {
@@ -723,7 +725,7 @@ export function MarkdownFileTreeDrawer({
           return (
             <li key={node.relativePath}>
               <button
-                className={`relative flex h-8 w-full cursor-pointer items-center gap-1 border-0 bg-transparent py-0 pr-2 text-left text-[13px] leading-none text-(--text-secondary) hover:bg-(--bg-hover) hover:text-(--text-heading) focus-visible:bg-(--bg-hover) focus-visible:text-(--text-heading) focus-visible:outline-none ${rowIndentClass} ${rowBranchClass}`}
+                className={`relative flex h-8 w-full cursor-pointer items-center gap-1 border-0 bg-transparent py-0 pr-2 text-left text-[13px] leading-none text-(--text-secondary) hover:bg-(--bg-hover) hover:text-(--text-heading) focus-visible:bg-(--bg-hover) focus-visible:text-(--text-heading) focus-visible:outline-none ${fileTreeContextRowSelectionClassName} ${rowIndentClass} ${rowBranchClass}`}
                 type="button"
                 aria-expanded={expanded}
                 onContextMenu={(event) => openContextMenu(event, folderNodeAsFile(node), node.path)}
@@ -778,7 +780,7 @@ export function MarkdownFileTreeDrawer({
               </div>
             ) : (
               <button
-                className={`relative grid h-8 w-full cursor-pointer grid-cols-[17px_minmax(0,1fr)] items-center gap-1.5 border-0 bg-transparent py-0 pr-2 text-left text-[13px] leading-none text-(--text-secondary) hover:bg-(--bg-hover) hover:text-(--text-heading) focus-visible:bg-(--bg-hover) focus-visible:text-(--text-heading) focus-visible:outline-none aria-[current=page]:border-l-[3px] aria-[current=page]:border-(--text-secondary) aria-[current=page]:bg-(--bg-active) aria-[current=page]:text-(--text-heading) ${rowIndentClass} ${rowBranchClass}`}
+                className={`relative grid h-8 w-full cursor-pointer grid-cols-[17px_minmax(0,1fr)] items-center gap-1.5 border-0 bg-transparent py-0 pr-2 text-left text-[13px] leading-none text-(--text-secondary) hover:bg-(--bg-hover) hover:text-(--text-heading) focus-visible:bg-(--bg-hover) focus-visible:text-(--text-heading) focus-visible:outline-none aria-[current=page]:border-l-[3px] aria-[current=page]:border-(--text-secondary) aria-[current=page]:bg-(--bg-active) aria-[current=page]:text-(--text-heading) ${fileTreeContextRowSelectionClassName} ${rowIndentClass} ${rowBranchClass}`}
                 type="button"
                 aria-current={active ? "page" : undefined}
                 aria-label={node.relativePath}
@@ -989,7 +991,7 @@ export function MarkdownFileTreeDrawer({
             >
               <div className="flex h-9 shrink-0 items-center gap-1 px-4 text-[13px] text-(--text-secondary)">
                 <div
-                  className="flex min-w-0 flex-1 items-center gap-1"
+                  className={`flex min-w-0 flex-1 items-center gap-1 ${fileTreeContextRowSelectionClassName}`}
                   onContextMenu={(event) => openContextMenu(event)}
                 >
                   <Folder aria-hidden="true" size={16} />
