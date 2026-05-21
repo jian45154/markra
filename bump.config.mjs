@@ -4,8 +4,40 @@ import path from "node:path";
 import { defineConfig } from "bumpp";
 
 const desktopPackagePath = "apps/desktop/package.json";
+const cargoManifestPath = "apps/desktop/src-tauri/Cargo.toml";
 const tauriConfigPath = "apps/desktop/src-tauri/tauri.conf.json";
 const cargoLockPath = "apps/desktop/src-tauri/Cargo.lock";
+
+export const bumppFilePaths = ["package.json", desktopPackagePath];
+
+export function updateCargoPackageVersion(contents, newVersion) {
+  const lines = contents.split(/(?<=\n)/u);
+  let inPackageSection = false;
+  let updated = false;
+
+  const nextLines = lines.map((line) => {
+    const trimmedLine = line.trim();
+
+    if (/^\[[^\]]+\]$/u.test(trimmedLine)) {
+      inPackageSection = trimmedLine === "[package]";
+    }
+
+    if (!inPackageSection || updated) {
+      return line;
+    }
+
+    return line.replace(/^(\s*version\s*=\s*)"[^"]*"/u, (_match, prefix) => {
+      updated = true;
+      return `${prefix}"${newVersion}"`;
+    });
+  });
+
+  if (!updated) {
+    throw new Error(`Unable to find [package] version in ${cargoManifestPath}`);
+  }
+
+  return nextLines.join("");
+}
 
 function addUpdatedFile(operation, relativePath) {
   const absolutePath = path.resolve(operation.options.cwd, relativePath);
@@ -15,6 +47,19 @@ function addUpdatedFile(operation, relativePath) {
       updatedFiles: [...operation.state.updatedFiles, absolutePath],
     });
   }
+}
+
+export function syncCargoPackageVersion(operation) {
+  const absolutePath = path.resolve(operation.options.cwd, cargoManifestPath);
+  const contents = fs.readFileSync(absolutePath, "utf8");
+  const nextContents = updateCargoPackageVersion(contents, operation.state.newVersion);
+
+  if (nextContents === contents) {
+    return;
+  }
+
+  fs.writeFileSync(absolutePath, nextContents);
+  addUpdatedFile(operation, cargoManifestPath);
 }
 
 function syncTauriVersion(operation) {
@@ -41,8 +86,9 @@ function syncCargoLock(operation) {
 
 export default defineConfig({
   execute(operation) {
+    syncCargoPackageVersion(operation);
     syncTauriVersion(operation);
     syncCargoLock(operation);
   },
-  files: ["package.json", desktopPackagePath, "apps/desktop/src-tauri/Cargo.toml"]
+  files: bumppFilePaths,
 });
