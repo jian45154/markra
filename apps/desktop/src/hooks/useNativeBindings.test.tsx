@@ -243,4 +243,40 @@ describe("useApplicationShortcuts", () => {
 
     expect(closeDocument).toHaveBeenCalledTimes(1);
   });
+
+  it("intercepts the default document search shortcut", () => {
+    const openDocumentSearch = vi.fn();
+    renderHook(() =>
+      useApplicationShortcuts({
+        ...baseOptions,
+        openDocumentSearch
+      })
+    );
+
+    const handled = fireEvent.keyDown(window, {
+      key: "f",
+      metaKey: true
+    });
+
+    expect(handled).toBe(false);
+    expect(openDocumentSearch).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens replace from the document search shortcut with Alt", () => {
+    const openDocumentReplace = vi.fn();
+    renderHook(() =>
+      useApplicationShortcuts({
+        ...baseOptions,
+        openDocumentReplace
+      })
+    );
+
+    fireEvent.keyDown(window, {
+      key: "f",
+      altKey: true,
+      metaKey: true
+    });
+
+    expect(openDocumentReplace).toHaveBeenCalledTimes(1);
+  });
 });

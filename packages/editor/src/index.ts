@@ -12,6 +12,7 @@ export * from "./mermaid.ts";
 export * from "./math.ts";
 export * from "./raw-html.ts";
 export * from "./selection-hold.ts";
+export * from "./search.ts";
 export * from "./shortcuts.ts";
 export * from "./slash-commands.ts";
 export * from "./table-controls.ts";

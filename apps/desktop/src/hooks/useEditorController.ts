@@ -11,14 +11,18 @@ import {
   clearAiEditorPreview,
   confirmAiEditorResultApplied,
   listAiEditorPreviewResults,
+  findVisibleSearchMatchesInState,
   normalizeHeadingSourceDocument,
   scrollAiEditorPreviewIntoView,
+  scrollSearchMatchIntoView,
   serializeLinkImageLiveMarkdown,
   showAiEditorPreview,
   showAiSelectionHold,
+  updateSearchDecorations,
   type AiEditorPreviewLabels
 } from "@markra/editor";
 import type { MarkdownOutlineItem } from "@markra/markdown";
+import type { SearchRange } from "@markra/shared";
 
 const fixedTitlebarHeight = 40;
 const outlineScrollTopMargin = 24;
@@ -459,6 +463,82 @@ export function useEditorController() {
     []
   );
 
+  const findSearchMatches = useCallback((query: string, options: { caseSensitive?: boolean } = {}) => {
+    try {
+      const view = editorRef.current?.action((ctx) => ctx.get(editorViewCtx));
+      if (!view) return [];
+
+      return findVisibleSearchMatchesInState(view.state, query, options);
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const showSearchMatches = useCallback((
+    matches: SearchRange[],
+    activeIndex: number,
+    options: { suppressEditorChrome?: boolean } = {}
+  ) => {
+    try {
+      const view = editorRef.current?.action((ctx) => ctx.get(editorViewCtx));
+      if (!view) return;
+
+      updateSearchDecorations(view, matches, activeIndex, options);
+    } catch {
+      // Search decoration is a transient affordance; failing to draw it should not interrupt editing.
+    }
+  }, []);
+
+  const revealSearchMatch = useCallback((match: SearchRange | null | undefined) => {
+    if (!match) return false;
+
+    try {
+      const view = editorRef.current?.action((ctx) => ctx.get(editorViewCtx));
+      if (!view) return false;
+
+      return scrollSearchMatchIntoView(view);
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const replaceSearchMatch = useCallback((match: SearchRange | null | undefined, replacement: string) => {
+    if (!match) return false;
+
+    try {
+      const view = editorRef.current?.action((ctx) => ctx.get(editorViewCtx));
+      if (!view) return false;
+
+      view.dispatch(
+        view.state.tr
+          .insertText(replacement, match.from, match.to)
+          .scrollIntoView()
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const replaceAllSearchMatches = useCallback((matches: SearchRange[], replacement: string) => {
+    if (matches.length === 0) return false;
+
+    try {
+      const view = editorRef.current?.action((ctx) => ctx.get(editorViewCtx));
+      if (!view) return false;
+
+      const transaction = [...matches]
+        .sort((left, right) => right.from - left.from)
+        .reduce((tr, match) => tr.insertText(replacement, match.from, match.to), view.state.tr)
+        .scrollIntoView();
+
+      view.dispatch(transaction);
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
   const insertMarkdownSnippet = useCallback((open: string, close: string, placeholder: string) => {
     const editor = editorRef.current;
     if (!editor) return;
@@ -673,6 +753,7 @@ export function useEditorController() {
     clearAiPreview,
     clearAiSelection,
     confirmAiResultApplied,
+    findSearchMatches,
     getDocumentEndPosition,
     getHeadingAnchors,
     getCurrentMarkdown,
@@ -686,10 +767,14 @@ export function useEditorController() {
     insertMarkdownTable,
     listAiPreviews,
     previewAiResult,
+    replaceAllSearchMatches,
     replaceMarkdown,
+    replaceSearchMatch,
+    revealSearchMatch,
     runEditorShortcut,
     scrollAiSelectionAboveCommand,
     scrollToAiPreview,
-    selectOutlineItem
+    selectOutlineItem,
+    showSearchMatches
   };
 }

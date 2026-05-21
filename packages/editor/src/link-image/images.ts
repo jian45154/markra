@@ -242,6 +242,7 @@ export function createFinalizedImageNodeView(
   source.addEventListener("input", syncSource);
   source.addEventListener("change", syncSource);
   source.addEventListener("keydown", moveToParagraphAfterImage);
+  source.addEventListener("blur", hideSource);
 
   return {
     dom,
@@ -268,6 +269,7 @@ export function createFinalizedImageNodeView(
       source.removeEventListener("input", syncSource);
       source.removeEventListener("change", syncSource);
       source.removeEventListener("keydown", moveToParagraphAfterImage);
+      source.removeEventListener("blur", hideSource);
     }
   };
 }

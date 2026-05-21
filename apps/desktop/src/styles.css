@@ -604,6 +604,33 @@
     @apply px-2.5 py-2 text-[12px] leading-5 font-[560] text-(--text-secondary);
   }
 
+  .document-search-icon-button {
+    @apply flex size-8 shrink-0 items-center justify-center rounded-sm border border-transparent bg-transparent text-(--text-secondary) outline-none transition-[background-color,color,border-color] duration-150 ease-out;
+  }
+
+  .document-search-icon-button:hover,
+  .document-search-icon-button:focus-visible,
+  .document-search-icon-button[aria-pressed="true"] {
+    @apply border-(--border-default) bg-(--bg-active) text-(--text-heading);
+  }
+
+  .document-search-icon-button:disabled {
+    @apply cursor-not-allowed opacity-40;
+  }
+
+  .document-search-text-button {
+    @apply h-8 shrink-0 rounded-sm border border-(--border-default) bg-(--bg-primary) px-2.5 text-[12px] leading-5 font-[620] text-(--text-heading) outline-none transition-[background-color,border-color,color] duration-150 ease-out;
+  }
+
+  .document-search-text-button:hover,
+  .document-search-text-button:focus-visible {
+    @apply border-(--border-strong) bg-(--bg-active);
+  }
+
+  .document-search-text-button:disabled {
+    @apply cursor-not-allowed opacity-45;
+  }
+
   .markdown-paper,
   .markdown-source-paper {
     --editor-text-cursor: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http://www.w3.org/2000/svg%27%20width%3D%2724%27%20height%3D%2724%27%20viewBox%3D%270%200%2024%2024%27%3E%3Cpath%20d%3D%27M12%204v16M8.5%204h7M8.5%2020h7%27%20fill%3D%27none%27%20stroke%3D%27%23ffffff%27%20stroke-width%3D%274%27%20stroke-linecap%3D%27round%27/%3E%3Cpath%20d%3D%27M12%204v16M8.5%204h7M8.5%2020h7%27%20fill%3D%27none%27%20stroke%3D%27%231a1c1e%27%20stroke-width%3D%272%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E") 12 12, text;
@@ -771,6 +798,26 @@
   .markdown-source-input::selection {
     background: color-mix(in srgb, var(--accent) 22%, transparent);
     -webkit-text-fill-color: transparent;
+  }
+
+  .markra-source-search-transparent {
+    color: transparent;
+  }
+
+  .markra-source-search-match,
+  .markra-search-match {
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+  }
+
+  .markra-source-search-match {
+    color: transparent;
+  }
+
+  .markra-source-search-match-current,
+  .markra-search-match-current {
+    background: color-mix(in srgb, var(--accent) 30%, transparent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, transparent);
   }
 
   .markdown-source-token-muted {
@@ -2595,6 +2642,31 @@
   .markdown-paper::selection,
   .markdown-paper *::selection {
     background: color-mix(in srgb, var(--accent) 20%, transparent);
+  }
+
+  .editor-content-slot[data-document-search-open="true"] .markdown-paper,
+  .editor-content-slot[data-document-search-open="true"] .markdown-paper *,
+  .editor-content-slot[data-document-search-open="true"] .markdown-source-paper,
+  .editor-content-slot[data-document-search-open="true"] .markdown-source-paper * {
+    caret-color: transparent !important;
+  }
+
+  .editor-content-slot[data-document-search-open="true"] .markdown-paper::selection,
+  .editor-content-slot[data-document-search-open="true"] .markdown-paper *::selection,
+  .editor-content-slot[data-document-search-open="true"] .markdown-source-paper::selection,
+  .editor-content-slot[data-document-search-open="true"] .markdown-source-paper *::selection {
+    background: transparent;
+  }
+
+  .editor-content-slot[data-document-search-open="true"] .markdown-paper .markra-math-caret-anchor,
+  .editor-content-slot[data-document-search-open="true"] .markdown-paper .markra-image-node-source-row {
+    display: none !important;
+  }
+
+  .editor-content-slot[data-document-search-open="true"] .markdown-paper .markra-image-node.markra-image-node-selected,
+  .editor-content-slot[data-document-search-open="true"] .markdown-paper .ProseMirror-selectednode {
+    outline: none !important;
+    box-shadow: none !important;
   }
 
   .ai-command-thinking-text {

@@ -14,6 +14,7 @@ import { AppToaster } from "./components/AppToaster";
 import { AiCommandBar } from "./components/AiCommandBar";
 import { AiAgentPanel } from "./components/AiAgentPanel";
 import { AiSelectionToolbar } from "./components/AiSelectionToolbar";
+import { DocumentSearchBar } from "./components/DocumentSearchBar";
 import { ImagePreview } from "./components/ImagePreview";
 import {
   MarkdownExportDocument,
@@ -54,7 +55,16 @@ import {
   useNativeMenuHandlers,
   useNativeMenus
 } from "./hooks/useNativeBindings";
-import { aiTranslationLanguageName, clampNumber, debug, t, type I18nKey } from "@markra/shared";
+import {
+  aiTranslationLanguageName,
+  clampNumber,
+  debug,
+  findSearchRanges,
+  normalizeSearchIndex,
+  t,
+  type I18nKey,
+  type SearchRange
+} from "@markra/shared";
 import { showAppToast } from "./lib/app-toast";
 import { createMarkdownImageSrcResolver } from "@markra/markdown";
 import { buildMarkdownHtmlDocument, exportDocumentFileName, localFileUrlFromPath } from "./lib/document-export";
@@ -189,6 +199,16 @@ function aiCommandTextSelection(selection: AiSelectionContext | null | undefined
   return selection;
 }
 
+function replaceTextRange(content: string, range: SearchRange, replacement: string) {
+  return `${content.slice(0, range.from)}${replacement}${content.slice(range.to)}`;
+}
+
+function replaceTextRanges(content: string, ranges: SearchRange[], replacement: string) {
+  return [...ranges]
+    .sort((left, right) => right.from - left.from)
+    .reduce((nextContent, range) => replaceTextRange(nextContent, range, replacement), content);
+}
+
 function restoreElementScrollTop(element: HTMLElement, scrollTop: number) {
   try {
     element.scrollTop = scrollTop;
@@ -225,6 +245,14 @@ export default function App() {
   const [editorMode, setEditorMode] = useState<EditorMode>("visual");
   const [activeEditorSurface, setActiveEditorSurface] = useState<EditorSurface>("visual");
   const [readOnlyMode, setReadOnlyMode] = useState(false);
+  const [documentSearchOpen, setDocumentSearchOpen] = useState(false);
+  const [documentSearchReplaceOpen, setDocumentSearchReplaceOpen] = useState(false);
+  const [documentSearchQuery, setDocumentSearchQuery] = useState("");
+  const [documentSearchReplacement, setDocumentSearchReplacement] = useState("");
+  const [documentSearchCaseSensitive, setDocumentSearchCaseSensitive] = useState(false);
+  const [documentSearchActiveIndex, setDocumentSearchActiveIndex] = useState(0);
+  const [documentSearchRevealRevision, setDocumentSearchRevealRevision] = useState(0);
+  const [visualDocumentSearchMatches, setVisualDocumentSearchMatches] = useState<SearchRange[]>([]);
   const [splitVisualPanePercent, setSplitVisualPanePercent] = useState(defaultSplitVisualPanePercent);
   const [sideDocumentMainPanePercent, setSideDocumentMainPanePercent] = useState(defaultSideDocumentMainPanePercent);
   const [visualEditorReadySequence, setVisualEditorReadySequence] = useState(0);
@@ -241,6 +269,7 @@ export default function App() {
   const pendingSplitVisualPanePercentRef = useRef(defaultSplitVisualPanePercent);
   const pendingSideDocumentMainPanePercentRef = useRef(defaultSideDocumentMainPanePercent);
   const sourceToVisualSyncingRef = useRef(false);
+  const lastDocumentSearchRevealRevisionRef = useRef(0);
   const documentRevisionRef = useRef(0);
   const visualEditorReadyRevisionRef = useRef<number | null>(null);
   const sourceScrollRef = useRef<HTMLElement | null>(null);
@@ -283,13 +312,18 @@ export default function App() {
   }, [editorPreferences.preferences.markdownTemplates]);
 
   const editor = useEditorController();
+  const findEditorSearchMatches = editor.findSearchMatches;
   const getEditorCurrentMarkdown = editor.getCurrentMarkdown;
   const handleMilkdownEditorReady = editor.handleEditorReady;
   const insertEditorMarkdownSnippet = editor.insertMarkdownSnippet;
   const insertEditorMarkdownTable = editor.insertMarkdownTable;
   const isEditorCurrentMarkdownEquivalent = editor.isCurrentMarkdownEquivalent;
+  const replaceAllEditorSearchMatches = editor.replaceAllSearchMatches;
   const replaceEditorMarkdown = editor.replaceMarkdown;
+  const replaceEditorSearchMatch = editor.replaceSearchMatch;
+  const revealEditorSearchMatch = editor.revealSearchMatch;
   const runEditorShortcut = editor.runEditorShortcut;
+  const showEditorSearchMatches = editor.showSearchMatches;
   const readCurrentMarkdownForDocument = useCallback((fallbackContent: string) => {
     if (sourceSurfaceActive) return fallbackContent;
 
@@ -392,6 +426,36 @@ export default function App() {
   documentRevisionRef.current = document.revision;
   const workspaceKey = document.path ?? fileTree.sourcePath ?? null;
   const hasOpenDocument = document.open;
+  const documentSearchAvailable = hasOpenDocument && !activeImageFile;
+  const documentSearchSurface: EditorSurface = sourceSurfaceActive ? "source" : "visual";
+  const sourceDocumentSearchMatches = useMemo(
+    () =>
+      documentSearchOpen && documentSearchSurface === "source"
+        ? findSearchRanges(document.content, documentSearchQuery, {
+            caseSensitive: documentSearchCaseSensitive
+          })
+        : [],
+    [
+      document.content,
+      documentSearchCaseSensitive,
+      documentSearchOpen,
+      documentSearchQuery,
+      documentSearchSurface
+    ]
+  );
+  const documentSearchMatches =
+    documentSearchSurface === "source" ? sourceDocumentSearchMatches : visualDocumentSearchMatches;
+  const documentSearchMatchCount = documentSearchMatches.length;
+  const normalizedDocumentSearchActiveIndex = normalizeSearchIndex(
+    documentSearchActiveIndex,
+    documentSearchMatchCount
+  );
+  const activeDocumentSearchMatch =
+    normalizedDocumentSearchActiveIndex >= 0
+      ? documentSearchMatches[normalizedDocumentSearchActiveIndex] ?? null
+      : null;
+  const visibleSourceDocumentSearchMatches =
+    documentSearchOpen && documentSearchSurface === "source" ? sourceDocumentSearchMatches : [];
   const activeAiAgentSessionId = workspaceSessionId ?? aiAgentSessionId;
   const aiResult = aiResults.at(-1) ?? null;
   const activeEditorContentWidth = editorContentWidth;
@@ -1701,6 +1765,145 @@ export default function App() {
     runEditorShortcut(...args);
     syncVisualMarkdownAfterEditorCommand();
   }, [readOnlyMode, runEditorShortcut, syncVisualMarkdownAfterEditorCommand]);
+  const handleDocumentSearchOpen = useCallback(() => {
+    if (!documentSearchAvailable) return;
+
+    setDocumentSearchOpen(true);
+    setDocumentSearchReplaceOpen(false);
+    setDocumentSearchActiveIndex(0);
+  }, [documentSearchAvailable]);
+  const handleDocumentReplaceOpen = useCallback(() => {
+    if (!documentSearchAvailable) return;
+
+    setDocumentSearchOpen(true);
+    setDocumentSearchReplaceOpen(true);
+    setDocumentSearchActiveIndex(0);
+  }, [documentSearchAvailable]);
+  const handleDocumentSearchClose = useCallback(() => {
+    setDocumentSearchOpen(false);
+    setDocumentSearchReplaceOpen(false);
+    setDocumentSearchActiveIndex(0);
+  }, []);
+  const handleDocumentSearchQueryChange = useCallback((query: string) => {
+    setDocumentSearchQuery(query);
+    setDocumentSearchActiveIndex(0);
+  }, []);
+  const handleDocumentSearchCaseSensitiveChange = useCallback((caseSensitive: boolean) => {
+    setDocumentSearchCaseSensitive(caseSensitive);
+    setDocumentSearchActiveIndex(0);
+  }, []);
+  const navigateDocumentSearch = useCallback((direction: 1 | -1) => {
+    if (documentSearchMatchCount <= 0) return;
+
+    setDocumentSearchActiveIndex((current) =>
+      normalizeSearchIndex((current < 0 ? 0 : current) + direction, documentSearchMatchCount)
+    );
+    setDocumentSearchRevealRevision((current) => current + 1);
+  }, [documentSearchMatchCount]);
+  const handleDocumentSearchNext = useCallback(() => {
+    navigateDocumentSearch(1);
+  }, [navigateDocumentSearch]);
+  const handleDocumentSearchPrevious = useCallback(() => {
+    navigateDocumentSearch(-1);
+  }, [navigateDocumentSearch]);
+  const handleDocumentReplace = useCallback(() => {
+    if (readOnlyMode || !activeDocumentSearchMatch) return;
+
+    if (documentSearchSurface === "source") {
+      handleSourceMarkdownChange(replaceTextRange(document.content, activeDocumentSearchMatch, documentSearchReplacement));
+      return;
+    }
+
+    replaceEditorSearchMatch(activeDocumentSearchMatch, documentSearchReplacement);
+  }, [
+    activeDocumentSearchMatch,
+    document.content,
+    documentSearchReplacement,
+    documentSearchSurface,
+    handleSourceMarkdownChange,
+    replaceEditorSearchMatch,
+    readOnlyMode
+  ]);
+  const handleDocumentReplaceAll = useCallback(() => {
+    if (readOnlyMode || documentSearchMatches.length === 0) return;
+
+    if (documentSearchSurface === "source") {
+      handleSourceMarkdownChange(replaceTextRanges(document.content, documentSearchMatches, documentSearchReplacement));
+      setDocumentSearchActiveIndex(0);
+      return;
+    }
+
+    replaceAllEditorSearchMatches(documentSearchMatches, documentSearchReplacement);
+    setDocumentSearchActiveIndex(0);
+  }, [
+    document.content,
+    documentSearchMatches,
+    documentSearchReplacement,
+    documentSearchSurface,
+    handleSourceMarkdownChange,
+    replaceAllEditorSearchMatches,
+    readOnlyMode
+  ]);
+  useEffect(() => {
+    if (documentSearchAvailable) return;
+
+    setDocumentSearchOpen(false);
+    setDocumentSearchReplaceOpen(false);
+  }, [documentSearchAvailable]);
+  useEffect(() => {
+    if (!documentSearchOpen || !documentSearchAvailable || documentSearchSurface !== "visual") {
+      setVisualDocumentSearchMatches([]);
+      return;
+    }
+
+    setVisualDocumentSearchMatches(
+      findEditorSearchMatches(documentSearchQuery, {
+        caseSensitive: documentSearchCaseSensitive
+      })
+    );
+  }, [
+    document.revision,
+    documentSearchAvailable,
+    documentSearchCaseSensitive,
+    documentSearchOpen,
+    documentSearchQuery,
+    documentSearchSurface,
+    findEditorSearchMatches,
+    visualEditorReadySequence
+  ]);
+  useEffect(() => {
+    const nextIndex = normalizeSearchIndex(documentSearchActiveIndex, documentSearchMatchCount);
+    if (nextIndex !== documentSearchActiveIndex) setDocumentSearchActiveIndex(nextIndex);
+  }, [documentSearchActiveIndex, documentSearchMatchCount]);
+  useEffect(() => {
+    if (!documentSearchOpen || documentSearchSurface !== "visual") {
+      showEditorSearchMatches([], -1, { suppressEditorChrome: false });
+      return;
+    }
+
+    showEditorSearchMatches(visualDocumentSearchMatches, normalizedDocumentSearchActiveIndex, {
+      suppressEditorChrome: true
+    });
+  }, [
+    documentSearchOpen,
+    documentSearchSurface,
+    normalizedDocumentSearchActiveIndex,
+    showEditorSearchMatches,
+    visualDocumentSearchMatches
+  ]);
+  useEffect(() => {
+    if (!documentSearchOpen || documentSearchSurface !== "visual") return;
+    if (documentSearchRevealRevision === lastDocumentSearchRevealRevisionRef.current) return;
+
+    lastDocumentSearchRevealRevisionRef.current = documentSearchRevealRevision;
+    revealEditorSearchMatch(activeDocumentSearchMatch);
+  }, [
+    activeDocumentSearchMatch,
+    documentSearchOpen,
+    documentSearchRevealRevision,
+    documentSearchSurface,
+    revealEditorSearchMatch
+  ]);
   useEffect(() => {
     exportContextRef.current = {
       activeImageFile: Boolean(activeImageFile),
@@ -1924,6 +2127,8 @@ export default function App() {
     exportPdf: exportPdfDocument,
     markdownShortcuts: editorPreferences.preferences.markdownShortcuts,
     openDocument: handleOpenMarkdownFile,
+    openDocumentReplace: handleDocumentReplaceOpen,
+    openDocumentSearch: handleDocumentSearchOpen,
     openFolder: handleOpenMarkdownFolder,
     saveDocument: handleSaveDocument,
     saveDocumentAs,
@@ -2214,7 +2419,31 @@ export default function App() {
             className={editorAgentLayoutClassName}
             style={{ gridTemplateColumns: `minmax(0,1fr) ${aiAgentInset}` }}
           >
-            <div className="editor-content-slot relative h-full min-h-0 overflow-hidden">
+            <div
+              className="editor-content-slot relative h-full min-h-0 overflow-hidden"
+              data-document-search-open={documentSearchOpen && documentSearchAvailable ? "true" : undefined}
+            >
+              {documentSearchOpen && documentSearchAvailable ? (
+                <DocumentSearchBar
+                  activeIndex={normalizedDocumentSearchActiveIndex}
+                  caseSensitive={documentSearchCaseSensitive}
+                  language={appLanguage.language}
+                  matchCount={documentSearchMatchCount}
+                  query={documentSearchQuery}
+                  readOnly={readOnlyMode}
+                  replaceOpen={documentSearchReplaceOpen}
+                  replacement={documentSearchReplacement}
+                  onCaseSensitiveChange={handleDocumentSearchCaseSensitiveChange}
+                  onClose={handleDocumentSearchClose}
+                  onNext={handleDocumentSearchNext}
+                  onPrevious={handleDocumentSearchPrevious}
+                  onQueryChange={handleDocumentSearchQueryChange}
+                  onReplace={handleDocumentReplace}
+                  onReplaceAll={handleDocumentReplaceAll}
+                  onReplaceOpenChange={setDocumentSearchReplaceOpen}
+                  onReplacementChange={setDocumentSearchReplacement}
+                />
+              ) : null}
               {activeImageFile ? (
                 <ImagePreview
                   alt={activeImageFile.name}
@@ -2296,6 +2525,8 @@ export default function App() {
                           onContentWidthResizeEnd={handleEditorContentWidthResizeEnd}
                           onScroll={handleSourcePaneScroll}
                           readOnly={readOnlyMode}
+                          searchActiveIndex={normalizedDocumentSearchActiveIndex}
+                          searchMatches={visibleSourceDocumentSearchMatches}
                           scrollRef={sourceScrollRef}
                           topInset="titlebar"
                         />
@@ -2315,6 +2546,8 @@ export default function App() {
                       onContentWidthResizeEnd={handleEditorContentWidthResizeEnd}
                       onScroll={handleSourcePaneScroll}
                       readOnly={readOnlyMode}
+                      searchActiveIndex={normalizedDocumentSearchActiveIndex}
+                      searchMatches={visibleSourceDocumentSearchMatches}
                       scrollRef={sourceScrollRef}
                       topInset="titlebar"
                     />

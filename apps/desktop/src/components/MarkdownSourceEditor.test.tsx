@@ -49,4 +49,19 @@ describe("MarkdownSourceEditor", () => {
     expect(container.querySelector(".markdown-source-token-callout")).toHaveTextContent("[!TIP]");
     expect(container.querySelector(".markdown-source-token-quote-marker")).toHaveTextContent(">");
   });
+
+  it("renders exact search highlights in source mode", () => {
+    const { container } = render(
+      <MarkdownSourceEditor
+        content="alpha, beta，gamma"
+        searchMatches={[{ from: 5, to: 6 }]}
+        searchActiveIndex={0}
+        onChange={() => {}}
+      />
+    );
+
+    expect(container.querySelector(".markra-source-search-match")).toHaveTextContent(",");
+    expect(container.querySelector(".markra-source-search-match-current")).toHaveTextContent(",");
+    expect(container.querySelector(".markra-source-search-match")).not.toHaveTextContent("，");
+  });
 });

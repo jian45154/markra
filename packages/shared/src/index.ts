@@ -7,6 +7,7 @@ export * from "./number.ts";
 export * from "./path.ts";
 export * from "./record.ts";
 export * from "./runtime.ts";
+export * from "./search.ts";
 export * from "./string.ts";
 export * from "./text.ts";
 export * from "./url.ts";

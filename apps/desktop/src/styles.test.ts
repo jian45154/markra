@@ -101,6 +101,21 @@ describe("editor stylesheet", () => {
     expect(imageSelectionStyles).not.toContain("outline-none");
   });
 
+  it("suppresses editor selection chrome while document search is open", () => {
+    const styles = readFileSync(`${process.cwd()}/src/styles.css`, "utf8");
+    const searchChromeStart = styles.indexOf(".editor-content-slot[data-document-search-open=\"true\"]");
+    const searchChromeEnd = styles.indexOf(".ai-command-thinking-text");
+    const searchChromeStyles = styles.slice(searchChromeStart, searchChromeEnd);
+
+    expect(searchChromeStart).toBeGreaterThanOrEqual(0);
+    expect(searchChromeEnd).toBeGreaterThan(searchChromeStart);
+    expect(searchChromeStyles).toContain("caret-color: transparent");
+    expect(searchChromeStyles).toContain(".markra-math-caret-anchor");
+    expect(searchChromeStyles).toContain(".markra-image-node.markra-image-node-selected");
+    expect(searchChromeStyles).toContain(".ProseMirror-selectednode");
+    expect(searchChromeStyles).toContain(".markra-image-node-source-row");
+  });
+
   it("lets AI insert previews inherit the current Markdown block typography", () => {
     const styles = readFileSync(`${process.cwd()}/src/styles.css`, "utf8");
 

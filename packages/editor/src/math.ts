@@ -1,5 +1,5 @@
 import type { Node as ProseNode } from "@milkdown/kit/prose/model";
-import { Plugin, PluginKey, TextSelection, type EditorState } from "@milkdown/kit/prose/state";
+import { Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from "@milkdown/kit/prose/state";
 import { Decoration, DecorationSet, type EditorView } from "@milkdown/kit/prose/view";
 import type { MarkdownNode } from "@milkdown/kit/transformer";
 import { $prose, $remark } from "@milkdown/kit/utils";
@@ -19,6 +19,11 @@ type MathRange = {
   to: number;
 };
 
+export type MarkraHiddenMathSourceRange = {
+  from: number;
+  to: number;
+};
+
 type ActiveMathSource = {
   from: number;
   to: number;
@@ -34,8 +39,13 @@ type MathRenderMeta =
     };
 
 const mathRenderKey = new PluginKey<ActiveMathSource | null>("markra-math-render");
+const mathCaretAnchorSuppressionKey = new PluginKey<boolean>("markra-math-caret-anchor-suppression");
 const transparentCaretAnchorSrc =
   "data:image/svg+xml,%3Csvg%20xmlns=%22http://www.w3.org/2000/svg%22%20width=%221%22%20height=%221%22%20viewBox=%220%200%201%201%22/%3E";
+
+type MathCaretAnchorSuppressionMeta = {
+  suppressed: boolean;
+};
 
 export function createMarkraMathMacros(): MarkraMathMacros {
   return {};
@@ -50,6 +60,16 @@ export function renderMarkraMathToString(tex: string, kind: MarkraMathKind, macr
     strict: "ignore",
     throwOnError: false
   });
+}
+
+export function setMathCaretAnchorSuppressedMeta(transaction: Transaction, suppressed: boolean) {
+  return transaction.setMeta(mathCaretAnchorSuppressionKey, {
+    suppressed
+  } satisfies MathCaretAnchorSuppressionMeta);
+}
+
+export function setMathCaretAnchorSuppressed(view: EditorView, suppressed: boolean) {
+  view.dispatch(setMathCaretAnchorSuppressedMeta(view.state.tr, suppressed));
 }
 
 function skipMathWhitespace(source: string, index: number) {
@@ -456,6 +476,30 @@ function getActiveMathSource(state: EditorState): MathRange | null {
 
 function getEditableMathRange(state: EditorState) {
   return getActiveMathSource(state) ?? findActiveMathRange(state);
+}
+
+export function findHiddenDisplayMathSourceRanges(state: EditorState): MarkraHiddenMathSourceRange[] {
+  const ranges: MarkraHiddenMathSourceRange[] = [];
+  const activeRange = getEditableMathRange(state);
+
+  state.doc.descendants((node, position) => {
+    if (!node.isTextblock || node.type.spec.code) return;
+
+    const blockStart = position + 1;
+    for (const relativeRange of getMathRanges(node.textContent)) {
+      if (relativeRange.kind !== "display") continue;
+
+      const range = makeAbsoluteRange(relativeRange, blockStart);
+      if (activeRange?.from === range.from && activeRange.to === range.to) continue;
+
+      ranges.push({
+        from: range.from,
+        to: range.to
+      });
+    }
+  });
+
+  return ranges;
 }
 
 function findAdjacentMathRange(state: EditorState, direction: "backward" | "forward") {
@@ -923,6 +967,7 @@ function createMathCaretAnchorDecoration(range: MathRange) {
 
 function buildMathDecorations(state: EditorState, activeRange: MathRange | null) {
   const { doc } = state;
+  const caretAnchorSuppressed = mathCaretAnchorSuppressionKey.getState(state) ?? false;
   const decorations: Decoration[] = [];
   const macros = createMarkraMathMacros();
 
@@ -981,7 +1026,7 @@ function buildMathDecorations(state: EditorState, activeRange: MathRange | null)
           })
         );
 
-        if (range.kind === "display" && selectionIsAtMathRangeEnd(state, range)) {
+        if (range.kind === "display" && !caretAnchorSuppressed && selectionIsAtMathRangeEnd(state, range)) {
           decorations.push(createMathCaretAnchorDecoration(range));
         }
       }
@@ -990,6 +1035,21 @@ function buildMathDecorations(state: EditorState, activeRange: MathRange | null)
 
   return DecorationSet.create(doc, decorations);
 }
+
+export const markraMathCaretAnchorSuppressionPlugin = $prose(() => {
+  return new Plugin<boolean>({
+    key: mathCaretAnchorSuppressionKey,
+    state: {
+      init: () => false,
+      apply(transaction, previous) {
+        const meta = transaction.getMeta(mathCaretAnchorSuppressionKey) as MathCaretAnchorSuppressionMeta | undefined;
+        if (typeof meta?.suppressed === "boolean") return meta.suppressed;
+
+        return previous;
+      }
+    }
+  });
+});
 
 export const markraMathPlugin = $prose(() => {
   return new Plugin({

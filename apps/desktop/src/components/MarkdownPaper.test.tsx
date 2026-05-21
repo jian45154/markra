@@ -27,10 +27,13 @@ import {
   clearAiSelectionHold,
   confirmAiEditorResultApplied,
   defaultMarkdownShortcuts,
+  findSearchMatchesInDoc,
+  findVisibleSearchMatchesInState,
   mermaidThemeFromElement,
   scrollAiEditorPreviewIntoView,
   showAiEditorPreview,
   showAiSelectionHold,
+  updateSearchDecorations,
   type MarkdownShortcutMap
 } from "@markra/editor";
 import {
@@ -164,6 +167,23 @@ function findLastTextBlockCursor(view: EditorView) {
     if (!node.isTextblock) return true;
 
     position = nodePosition + 1;
+    return true;
+  });
+
+  if (position === null) {
+    throw new Error("Could not find text block in editor.");
+  }
+
+  return position;
+}
+
+function findLastTextBlockEndCursor(view: EditorView) {
+  let position: number | null = null;
+
+  view.state.doc.descendants((node, nodePosition) => {
+    if (!node.isTextblock) return true;
+
+    position = nodePosition + 1 + node.content.size;
     return true;
   });
 
@@ -612,6 +632,21 @@ afterAll(async () => {
 });
 
 describe("MarkdownPaper editing", () => {
+  it("renders exact visual search highlights without width normalization", async () => {
+    const { container, view } = await renderEditor("alpha, beta，gamma, delta");
+
+    const commaMatches = findSearchMatchesInDoc(view.state.doc, ",");
+    const fullWidthCommaMatches = findSearchMatchesInDoc(view.state.doc, "，");
+
+    expect(commaMatches.map((match) => view.state.doc.textBetween(match.from, match.to))).toEqual([",", ","]);
+    expect(fullWidthCommaMatches.map((match) => view.state.doc.textBetween(match.from, match.to))).toEqual(["，"]);
+
+    updateSearchDecorations(view, commaMatches, 0);
+
+    expect(container.querySelectorAll(".markra-search-match")).toHaveLength(2);
+    expect(container.querySelector(".markra-search-match-current")).toHaveTextContent(",");
+  });
+
   it("keeps the writing surface from macOS-style scroll dragging", async () => {
     const { container } = await renderEditor();
 
@@ -1160,6 +1195,85 @@ describe("MarkdownPaper editing", () => {
     expect(selectionParent).toHaveClass("markra-math-source-hidden-display");
     expect(nativeCaretAnchor).toBeInTheDocument();
     expect(nativeCaretAnchor).toHaveAttribute("src", expect.stringContaining("data:image/svg+xml"));
+  });
+
+  it("suppresses the display math caret anchor while visual document search is active", async () => {
+    const source = [
+      "# c",
+      "",
+      "112",
+      "",
+      "$$",
+      String.raw`\begin{aligned}`,
+      String.raw`b &= a \\`,
+      String.raw`-y &= b \\`,
+      String.raw`z &= csa \\`,
+      String.raw`z &= csb`,
+      String.raw`\end{aligned}`,
+      "$$"
+    ].join("\n");
+    const { container, view } = await renderEditor(source);
+
+    moveCursor(view, findLastTextBlockEndCursor(view));
+    await waitFor(() =>
+      expect(container.querySelector(".ProseMirror img.markra-math-caret-anchor")).toBeInTheDocument()
+    );
+
+    const matches = findSearchMatchesInDoc(view.state.doc, "c");
+    expect(matches.length).toBeGreaterThan(0);
+
+    updateSearchDecorations(view, matches, 0, { suppressEditorChrome: true });
+    await waitFor(() =>
+      expect(container.querySelector(".ProseMirror img.markra-math-caret-anchor")).not.toBeInTheDocument()
+    );
+
+    updateSearchDecorations(view, [], -1, { suppressEditorChrome: false });
+    await waitFor(() =>
+      expect(container.querySelector(".ProseMirror img.markra-math-caret-anchor")).toBeInTheDocument()
+    );
+  });
+
+  it("does not expose hidden display math source when the query matches formula text", async () => {
+    const source = [
+      "# c",
+      "",
+      "$$",
+      String.raw`\begin{aligned}`,
+      String.raw`z &= csa \\`,
+      String.raw`z &= csb`,
+      String.raw`\end{aligned}`,
+      "$$"
+    ].join("\n");
+    const { container, view } = await renderEditor(source);
+
+    moveCursor(view, findLastTextBlockEndCursor(view));
+    await waitFor(() =>
+      expect(container.querySelector(".ProseMirror img.markra-math-caret-anchor")).toBeInTheDocument()
+    );
+
+    const matches = findSearchMatchesInDoc(view.state.doc, "csa");
+    expect(matches).toHaveLength(1);
+
+    updateSearchDecorations(view, matches, 0, { suppressEditorChrome: true });
+
+    expect(container.querySelector(".ProseMirror .markra-math-source-hidden-display")).toBeInTheDocument();
+    expect(
+      container.querySelector(".ProseMirror .markra-math-source-hidden-display .markra-search-match")
+    ).not.toBeInTheDocument();
+    expect(
+      container.querySelector(".ProseMirror .markra-math-source-hidden-display.markra-search-match")
+    ).not.toBeInTheDocument();
+    expect(container.querySelector(".ProseMirror .markra-search-match-current")).not.toBeInTheDocument();
+  });
+
+  it("omits visual search matches that overlap hidden display math source", async () => {
+    const source = "Visible $$ E = mc^2 $$";
+    const { view } = await renderEditor(source);
+
+    const allMatches = findSearchMatchesInDoc(view.state.doc, "Visible $$");
+    expect(allMatches).toHaveLength(1);
+
+    expect(findVisibleSearchMatchesInState(view.state, "Visible $$")).toHaveLength(0);
   });
 
   it("reveals math source for editing when a rendered formula is clicked", async () => {

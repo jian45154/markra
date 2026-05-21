@@ -50,6 +50,8 @@ type ApplicationShortcutOptions = {
   exportPdf?: () => unknown | Promise<unknown>;
   markdownShortcuts?: MarkdownShortcutMap;
   openDocument: () => unknown | Promise<unknown>;
+  openDocumentReplace?: () => unknown | Promise<unknown>;
+  openDocumentSearch?: () => unknown | Promise<unknown>;
   openFolder: () => unknown | Promise<unknown>;
   saveDocument: () => unknown | Promise<unknown>;
   saveDocumentAs: () => unknown | Promise<unknown>;
@@ -283,6 +285,8 @@ export function useApplicationShortcuts({
   exportPdf,
   markdownShortcuts,
   openDocument,
+  openDocumentReplace,
+  openDocumentSearch,
   openFolder,
   saveDocument,
   saveDocumentAs,
@@ -319,10 +323,18 @@ export function useApplicationShortcuts({
         return;
       }
 
-      if (event.altKey) return;
-
       const key = event.key.toLowerCase();
-      if (key === "s" && event.shiftKey) {
+      if (key === "f" && !event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        if (event.altKey) {
+          openDocumentReplace?.();
+        } else {
+          openDocumentSearch?.();
+        }
+      } else if (event.altKey) {
+        return;
+      } else if (key === "s" && event.shiftKey) {
         event.preventDefault();
         saveDocumentAs();
       } else if (key === "w" && !event.shiftKey && closeDocument) {
@@ -356,6 +368,8 @@ export function useApplicationShortcuts({
     closeDocument,
     normalizedMarkdownShortcuts,
     openDocument,
+    openDocumentReplace,
+    openDocumentSearch,
     openFolder,
     saveDocument,
     saveDocumentAs,

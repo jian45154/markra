@@ -1,5 +1,14 @@
-import { Fragment, type CSSProperties, type ChangeEvent, type ReactNode, type Ref, type UIEvent } from "react";
-import { parseMarkdownCalloutMarker, t, type AppLanguage } from "@markra/shared";
+import {
+  Fragment,
+  useEffect,
+  useRef,
+  type CSSProperties,
+  type ChangeEvent,
+  type ReactNode,
+  type Ref,
+  type UIEvent
+} from "react";
+import { parseMarkdownCalloutMarker, t, type AppLanguage, type SearchRange } from "@markra/shared";
 import {
   editorContentWidthPixels,
   editorCustomContentWidthMax,
@@ -24,6 +33,8 @@ type MarkdownSourceEditorProps = {
   onContentWidthResizeStart?: () => unknown;
   onScroll?: (event: UIEvent<HTMLElement>) => unknown;
   readOnly?: boolean;
+  searchActiveIndex?: number;
+  searchMatches?: SearchRange[];
   scrollRef?: Ref<HTMLElement>;
   topInset?: "none" | "tabs" | "titlebar";
 };
@@ -159,6 +170,48 @@ function markdownInlineTokenClassName(token: string) {
   return "markdown-source-token-emphasis";
 }
 
+function renderSourceSearchHighlights(content: string, matches: SearchRange[] = [], activeIndex = -1) {
+  if (matches.length === 0) return null;
+
+  const nodes: ReactNode[] = [];
+  let offset = 0;
+
+  matches.forEach((match, index) => {
+    const from = Math.max(0, Math.min(content.length, match.from));
+    const to = Math.max(from, Math.min(content.length, match.to));
+    if (to <= from) return;
+
+    if (from > offset) {
+      nodes.push(
+        <span className="markra-source-search-transparent" key={`text-${offset}`}>
+          {content.slice(offset, from)}
+        </span>
+      );
+    }
+
+    nodes.push(
+      <span
+        className={`markra-source-search-match ${index === activeIndex ? "markra-source-search-match-current" : ""}`}
+        data-markra-source-search-current={index === activeIndex ? "true" : undefined}
+        key={`match-${from}-${to}-${index}`}
+      >
+        {content.slice(from, to)}
+      </span>
+    );
+    offset = to;
+  });
+
+  if (offset < content.length) {
+    nodes.push(
+      <span className="markra-source-search-transparent" key={`text-${offset}`}>
+        {content.slice(offset)}
+      </span>
+    );
+  }
+
+  return nodes;
+}
+
 export function MarkdownSourceEditor({
   autoFocus = false,
   bodyFontSize = 16,
@@ -175,9 +228,13 @@ export function MarkdownSourceEditor({
   onContentWidthResizeStart,
   onScroll,
   readOnly = false,
+  searchActiveIndex = -1,
+  searchMatches = [],
   scrollRef,
   topInset = "titlebar"
 }: MarkdownSourceEditorProps) {
+  const sourceLayerRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const resolvedContentWidth = contentWidthPx ?? editorContentWidthPixels[contentWidth];
   const paperStyle = {
     fontSize: `${bodyFontSize}px`,
@@ -195,6 +252,17 @@ export function MarkdownSourceEditor({
       : topInset === "titlebar"
         ? "pt-14 max-[900px]:pt-10"
         : "pt-6 max-[900px]:pt-5";
+
+  useEffect(() => {
+    const activeMatch = searchMatches[searchActiveIndex];
+    if (!activeMatch) return;
+
+    textareaRef.current?.setSelectionRange(activeMatch.from, activeMatch.to);
+    const currentMatch = sourceLayerRef.current?.querySelector('[data-markra-source-search-current="true"]');
+    if (currentMatch instanceof HTMLElement && typeof currentMatch.scrollIntoView === "function") {
+      currentMatch.scrollIntoView({ block: "center", inline: "nearest" });
+    }
+  }, [searchActiveIndex, searchMatches]);
 
   return (
     <section
@@ -218,18 +286,27 @@ export function MarkdownSourceEditor({
           onResizeEnd={onContentWidthResizeEnd}
           onResizeStart={onContentWidthResizeStart}
         />
-        <div className="markdown-source-layer relative min-h-[calc(100vh-176px)]">
+        <div className="markdown-source-layer relative min-h-[calc(100vh-176px)]" ref={sourceLayerRef}>
           <pre
             className="markdown-source-highlight pointer-events-none m-0 min-h-[calc(100vh-176px)] whitespace-pre-wrap wrap-break-word border-0 bg-transparent p-0 font-mono text-[0.94em] leading-[inherit] tracking-normal"
             aria-hidden="true"
           >
             <code>{renderMarkdownSourceHighlight(content)}</code>
           </pre>
+          {searchMatches.length > 0 ? (
+            <pre
+              className="markra-source-search-layer pointer-events-none absolute inset-0 m-0 min-h-[calc(100vh-176px)] whitespace-pre-wrap wrap-break-word border-0 bg-transparent p-0 font-mono text-[0.94em] leading-[inherit] tracking-normal"
+              aria-hidden="true"
+            >
+              <code>{renderSourceSearchHighlights(content, searchMatches, searchActiveIndex)}</code>
+            </pre>
+          ) : null}
           <textarea
             className="markdown-source-input absolute inset-0 block h-full min-h-full w-full resize-none overflow-hidden border-0 bg-transparent p-0 font-mono text-[0.94em] leading-[inherit] tracking-normal text-transparent outline-none placeholder:text-(--text-secondary) focus:outline-none"
             aria-label={t(language, "app.markdownSource")}
             autoFocus={autoFocus}
             readOnly={readOnly}
+            ref={textareaRef}
             spellCheck={false}
             value={content}
             onChange={handleChange}

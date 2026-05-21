@@ -3357,6 +3357,161 @@ describe("Markra workspace", () => {
     expect(await screen.findByLabelText("Markdown editor")).toHaveAttribute("data-editor-engine", "milkdown");
   });
 
+  it("opens document search from the keyboard shortcut", async () => {
+    const { container } = renderApp();
+
+    expect(await screen.findByText("Welcome to Markra")).toBeInTheDocument();
+
+    expect(fireEvent.keyDown(window, { key: "f", metaKey: true })).toBe(false);
+
+    expect(screen.getByRole("search", { name: "Find in document" })).toBeInTheDocument();
+    const searchInput = screen.getByRole("searchbox", { name: "Find in document" });
+    expect(searchInput).toHaveFocus();
+    expect(searchInput).toHaveAttribute("autocomplete", "off");
+    expect(searchInput).toHaveAttribute("autocapitalize", "none");
+    expect(searchInput).toHaveAttribute("autocorrect", "off");
+    expect(searchInput).toHaveAttribute("spellcheck", "false");
+    expect(container.querySelector(".editor-content-slot")).toHaveAttribute("data-document-search-open", "true");
+  });
+
+  it("does not open the AI command when visual document search focuses a match", async () => {
+    const { container } = renderApp();
+
+    expect(await screen.findByText("Welcome to Markra")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "f", metaKey: true });
+    fireEvent.change(screen.getByRole("searchbox", { name: "Find in document" }), {
+      target: { value: "Welcome" }
+    });
+
+    await waitFor(() => expect(container.querySelector(".markra-search-match-current")).toBeInTheDocument());
+    await settleEditorUpdates();
+
+    expect(screen.queryByRole("dialog", { name: "AI writing command" })).not.toBeInTheDocument();
+  });
+
+  it("does not scroll the visual editor while typing a document search query", async () => {
+    const { container } = renderApp();
+    const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
+    const scrollIntoView = vi.fn();
+
+    expect(await screen.findByText("Welcome to Markra")).toBeInTheDocument();
+
+    Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+      configurable: true,
+      value: scrollIntoView
+    });
+
+    try {
+      fireEvent.keyDown(window, { key: "f", metaKey: true });
+      fireEvent.change(screen.getByRole("searchbox", { name: "Find in document" }), {
+        target: { value: "Welcome" }
+      });
+
+      await waitFor(() => expect(container.querySelector(".markra-search-match-current")).toBeInTheDocument());
+      await settleEditorUpdates();
+
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      expect(container.querySelector(".ProseMirror .markra-image-node-source")).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Next match" }));
+
+      await waitFor(() => expect(scrollIntoView).toHaveBeenCalled());
+    } finally {
+      if (originalScrollIntoView) {
+        HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+      } else {
+        Reflect.deleteProperty(HTMLElement.prototype, "scrollIntoView");
+      }
+    }
+  });
+
+  it("does not count hidden display math source as a visual document search match", async () => {
+    mockOpenMarkdownFile({
+      content: [
+        "# c",
+        "",
+        "$$",
+        String.raw`\begin{aligned}`,
+        String.raw`z &= csa \\`,
+        String.raw`z &= csb`,
+        String.raw`\end{aligned}`,
+        "$$"
+      ].join("\n"),
+      name: "math.md",
+      path: mockNativePath
+    });
+    const { container } = renderApp();
+
+    fireEvent.keyDown(window, { key: "o", metaKey: true });
+    expect(await screen.findByText("c")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "f", metaKey: true });
+    fireEvent.change(screen.getByRole("searchbox", { name: "Find in document" }), {
+      target: { value: "csa" }
+    });
+
+    await waitFor(() => expect(screen.getByText("0/0")).toBeInTheDocument());
+    expect(container.querySelector(".ProseMirror .markra-search-match-current")).not.toBeInTheDocument();
+  });
+
+  it("clears finalized image source editing when document search opens", async () => {
+    mockOpenMarkdownFile({
+      content: "Intro\n\n![Screenshot](assets/pasted-image.png)\n\nContent",
+      name: "native.md",
+      path: mockNativePath
+    });
+    const { container } = renderApp();
+
+    fireEvent.keyDown(window, { key: "o", metaKey: true });
+    expect(await screen.findByText("Content")).toBeInTheDocument();
+
+    const image = container.querySelector<HTMLImageElement>('.ProseMirror img[src="assets/pasted-image.png"]');
+    expect(image).toBeInTheDocument();
+    expect(fireEvent.mouseDown(image!)).toBe(false);
+
+    const sourceInput = await waitFor(() => {
+      const input = container.querySelector<HTMLInputElement>(".ProseMirror .markra-image-node-source");
+      expect(input).toBeInTheDocument();
+      return input!;
+    });
+    await waitFor(() => expect(sourceInput).toHaveFocus());
+    expect(image?.closest(".markra-image-node")).toHaveClass("markra-image-node-selected");
+
+    fireEvent.keyDown(window, { key: "f", metaKey: true });
+
+    expect(screen.getByRole("searchbox", { name: "Find in document" })).toHaveFocus();
+    await waitFor(() =>
+      expect(container.querySelector(".ProseMirror .markra-image-node-source")).not.toBeInTheDocument()
+    );
+    expect(image?.closest(".markra-image-node")).not.toHaveClass("markra-image-node-selected");
+  });
+
+  it("replaces the current source-mode document search match", async () => {
+    renderApp();
+
+    expect(await screen.findByText("Welcome to Markra")).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: "s", altKey: true, metaKey: true });
+    const sourceEditor = await screen.findByRole("textbox", { name: "Markdown source" });
+
+    fireEvent.keyDown(window, { key: "f", altKey: true, metaKey: true });
+    fireEvent.change(screen.getByRole("searchbox", { name: "Find in document" }), {
+      target: { value: "Welcome" }
+    });
+    const replaceInput = screen.getByRole("textbox", { name: "Replace" });
+    expect(replaceInput).toHaveAttribute("autocomplete", "off");
+    expect(replaceInput).toHaveAttribute("autocapitalize", "none");
+    expect(replaceInput).toHaveAttribute("autocorrect", "off");
+    expect(replaceInput).toHaveAttribute("spellcheck", "false");
+    fireEvent.change(screen.getByRole("textbox", { name: "Replace" }), {
+      target: { value: "Hello" }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Replace" }));
+
+    expect((sourceEditor as HTMLTextAreaElement).value).toContain("# Hello to Markra");
+  });
+
   it("toggles read-only mode from the keyboard shortcut and marks the status area", async () => {
     const { container } = renderApp();
 

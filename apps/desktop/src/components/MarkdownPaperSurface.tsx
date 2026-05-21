@@ -21,10 +21,12 @@ import {
   markraLinkImageLivePlugin,
   markraLiveMarkdownPlugin,
   markraMarkdownShortcuts,
+  markraMathCaretAnchorSuppressionPlugin,
   markraMathPlugin,
   markraMathRemarkPlugin,
   markraMathSourcePlugin,
   markraRawHtmlPlugin,
+  markraSearchPlugin,
   markraSlashCommands,
   markraTableControlsPlugin,
   normalizeHeadingSourceDocument,
@@ -266,9 +268,11 @@ function MilkdownEditorSurface({
         .use(markraMathSourcePlugin)
         .use(markraMarkdownShortcuts(normalizedMarkdownShortcuts))
         .use(markraCodeBlockPlugin)
+        .use(markraMathCaretAnchorSuppressionPlugin)
         .use(markraMathPlugin)
         .use(markraAiSelectionHoldPlugin)
         .use(markraAiEditorPreviewPlugin)
+        .use(markraSearchPlugin())
         .use(markraBlockDragPlugin(blockDragLabels))
         .use(markraHeadingTogglePlugin(headingToggleLabels))
         .use(markraListTogglePlugin(listToggleLabels))
