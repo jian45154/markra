@@ -359,6 +359,28 @@ function findClosingDelimiter(text: string, delimiter: "$" | "$$", from: number)
   return -1;
 }
 
+function readCurrencyAmountEnd(text: string, dollarIndex: number) {
+  if (!/\d/u.test(text[dollarIndex + 1] ?? "")) return null;
+
+  let cursor = dollarIndex + 1;
+  while (cursor < text.length && /[\d,.]/u.test(text[cursor] ?? "")) cursor += 1;
+  return cursor;
+}
+
+function hasMathOperatorSyntax(text: string) {
+  return /[\\=+\-*/^_{}<>]/u.test(text);
+}
+
+function looksLikeCurrencyAmountSpill(text: string, openingIndex: number, closingIndex: number) {
+  const amountEnd = readCurrencyAmountEnd(text, openingIndex);
+  if (amountEnd === null || amountEnd >= closingIndex) return false;
+
+  const textBetweenAmountAndClosing = text.slice(amountEnd, closingIndex);
+  if (hasMathOperatorSyntax(textBetweenAmountAndClosing)) return false;
+
+  return /[\s\p{P}]/u.test(text[amountEnd] ?? "");
+}
+
 function getMathRanges(text: string) {
   const ranges: MathRange[] = [];
   let index = 0;
@@ -399,6 +421,11 @@ function getMathRanges(text: string) {
 
     const closingIndex = findClosingDelimiter(text, "$", index + 1);
     if (closingIndex === -1) {
+      index += 1;
+      continue;
+    }
+
+    if (looksLikeCurrencyAmountSpill(text, index, closingIndex)) {
       index += 1;
       continue;
     }

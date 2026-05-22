@@ -1097,6 +1097,17 @@ describe("MarkdownPaper editing", () => {
     expect(serializeMarkdown(view.state.doc)).toContain("Where $A$ is the final amount.");
   });
 
+  it("keeps dollar-prefixed amounts as plain markdown text", async () => {
+    const source = "Invoice options: $1000、 $100";
+    const { container, editor, view } = await renderEditor(source);
+    const serializeMarkdown = editor.action((ctx) => ctx.get(serializerCtx));
+
+    expect(container.querySelector(".ProseMirror .markra-math-render-inline")).not.toBeInTheDocument();
+    expect(container.querySelector(".ProseMirror .markra-math-source-hidden")).not.toBeInTheDocument();
+    expect(view.state.doc.textContent).toBe(source);
+    expect(serializeMarkdown(view.state.doc).trimEnd()).toBe(source);
+  });
+
   it("applies display math macro definitions to later formulas", async () => {
     const macroDefinition = ["$$", String.raw`\newcommand{\RR}{\mathbb{R}}`, "$$"].join("\n");
     const source = [macroDefinition, "", String.raw`The domain is $\RR$.`].join("\n");
