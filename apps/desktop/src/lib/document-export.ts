@@ -1,7 +1,7 @@
 import katexStyles from "katex/dist/katex.css?raw";
 import { isMarkraMathMacroDefinitionSource } from "@markra/editor";
 
-export type ExportDocumentFormat = "html" | "pdf";
+export type ExportDocumentFormat = "html" | "pdf" | "docx" | "epub" | "latex";
 
 const defaultPdfMarginMm = 18;
 const defaultPdfPageHeightMm = 297;
@@ -401,8 +401,9 @@ export function exportDocumentFileName(documentName: string, format: ExportDocum
   const baseName = (trimmedName || "Untitled")
     .replace(/\.(?:md|markdown|txt)$/iu, "")
     .trim() || "Untitled";
+  const extension = format === "latex" ? "tex" : format;
 
-  return `${baseName}.${format}`;
+  return `${baseName}.${extension}`;
 }
 
 export function localFileUrlFromPath(path: string) {

@@ -1,9 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import {
   closeNativeWindow,
+  listenNativeSettingsWindowTarget,
   listNativeEditorWindowRestoreStates,
   minimizeNativeWindow,
+  openSettingsWindow,
   setNativeEditorWindowRestoreState,
   toggleNativeWindowMaximized
 } from "./window";
@@ -12,12 +15,17 @@ vi.mock("@tauri-apps/api/core", () => ({
   invoke: vi.fn()
 }));
 
+vi.mock("@tauri-apps/api/event", () => ({
+  listen: vi.fn()
+}));
+
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: vi.fn()
 }));
 
 const mockedGetCurrentWindow = vi.mocked(getCurrentWindow);
 const mockedInvoke = vi.mocked(invoke);
+const mockedListen = vi.mocked(listen);
 
 describe("native window actions", () => {
   beforeEach(() => {
@@ -27,6 +35,7 @@ describe("native window actions", () => {
     });
     mockedGetCurrentWindow.mockReset();
     mockedInvoke.mockReset();
+    mockedListen.mockReset();
   });
 
   afterEach(() => {
@@ -82,6 +91,34 @@ describe("native window actions", () => {
       filePath: "/mock-files/notes.md",
       openFilePaths: ["/mock-files/notes.md"]
     });
+  });
+
+  it("opens the settings window at the requested target", async () => {
+    mockedInvoke.mockResolvedValue(undefined);
+
+    await openSettingsWindow("exportPandocPath");
+
+    expect(mockedInvoke).toHaveBeenCalledWith("open_settings_window", {
+      target: "exportPandocPath"
+    });
+  });
+
+  it("listens for native settings window target events", async () => {
+    const cleanup = vi.fn();
+    mockedListen.mockImplementation((_event, callback) => {
+      return Promise.resolve(cleanup);
+    });
+    const onTarget = vi.fn();
+
+    await expect(listenNativeSettingsWindowTarget(onTarget)).resolves.toBe(cleanup);
+    const onEvent = mockedListen.mock.calls[0]?.[1] as ((event: { payload: { target?: unknown } }) => unknown) | undefined;
+    if (!onEvent) throw new Error("settings target listener was not registered");
+    onEvent({ payload: { target: "exportPandocPath" } });
+    onEvent({ payload: { target: "unknown" } });
+
+    expect(mockedListen).toHaveBeenCalledWith("markra://settings-window-target", expect.any(Function));
+    expect(onTarget).toHaveBeenCalledTimes(1);
+    expect(onTarget).toHaveBeenCalledWith("exportPandocPath");
   });
 
   it("lists normalized editor window restore states from Tauri", async () => {

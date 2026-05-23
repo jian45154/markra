@@ -109,9 +109,12 @@ import {
   readNativeMarkdownFile,
   readNativeMarkdownTemplateFile,
   saveNativeHtmlFile,
+  saveNativePandocFile,
   saveNativePdfFile,
+  showNativePandocSetup,
   writeNativeMarkdownTemplateFile,
-  type NativeMarkdownFolderFile
+  type NativeMarkdownFolderFile,
+  type NativePandocExportFormat
 } from "./lib/tauri";
 import {
   createCustomMarkdownTemplateFromFile,
@@ -170,6 +173,25 @@ type DocumentTabViewState = {
 
 function isSettingsWindowRoute() {
   return new URLSearchParams(window.location.search).has("settings");
+}
+
+const pandocInstallUrl = "https://pandoc.org/installing.html";
+
+function isPandocSetupError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+
+  return /Pandoc export requires Pandoc|Pandoc executable not found|Failed to launch Pandoc/u.test(message);
+}
+
+async function runPandocSetupAction(action: "cancel" | "install" | "setPath") {
+  if (action === "install") {
+    await openNativeExternalUrl(pandocInstallUrl);
+    return;
+  }
+
+  if (action === "setPath") {
+    await openSettingsWindow("exportPandocPath");
+  }
 }
 
 function aiResultSignature(result: AiDiffResult) {
@@ -285,7 +307,8 @@ export default function App() {
     activeImageFile: false,
     content: "",
     hasOpenDocument: false,
-    name: "Untitled.md"
+    name: "Untitled.md",
+    path: null as string | null
   });
   const reconciledAiWorkspaceKeyRef = useRef<string | null | undefined>(undefined);
   const aiAgentInitialSessionOptionsRef = useRef({
@@ -1950,9 +1973,10 @@ export default function App() {
       activeImageFile: Boolean(activeImageFile),
       content: document.content,
       hasOpenDocument,
-      name: document.name || "Untitled.md"
+      name: document.name || "Untitled.md",
+      path: document.path
     };
-  }, [activeImageFile, document.content, document.name, hasOpenDocument]);
+  }, [activeImageFile, document.content, document.name, document.path, hasOpenDocument]);
   const handleEditorModeToggle = useCallback(() => {
     if (!sourceModeAvailable) return;
 
@@ -2077,6 +2101,45 @@ export default function App() {
   }, [appLanguage.language, clearExportSnapshot, exportSettings.settings, exportSnapshot?.id]);
   const exportHtmlDocument = useCallback(() => beginDocumentExport("html"), [beginDocumentExport]);
   const exportPdfDocument = useCallback(() => beginDocumentExport("pdf"), [beginDocumentExport]);
+  const exportPandocDocument = useCallback((format: NativePandocExportFormat) => {
+    const context = exportContextRef.current;
+    if (!context.hasOpenDocument || context.activeImageFile) return;
+
+    saveNativePandocFile({
+      documentPath: context.path,
+      format,
+      markdown: readCurrentMarkdownForDocument(context.content),
+      pandocArgs: exportSettings.settings.pandocArgs,
+      pandocPath: exportSettings.settings.pandocPath,
+      suggestedName: exportDocumentFileName(context.name, format)
+    }).catch((error: unknown) => {
+      if (!isPandocSetupError(error)) {
+        showAppToast({
+          message: translate("app.pandocExportFailed"),
+          status: "error"
+        });
+        return;
+      }
+
+      showNativePandocSetup({
+        cancelLabel: translate("app.cancelPandocSetup"),
+        installLabel: translate("app.installPandoc"),
+        message: translate("app.pandocRequiredMessage"),
+        setPathLabel: translate("app.setPandocPath"),
+        title: translate("app.pandocRequiredTitle")
+      })
+        .then(runPandocSetupAction)
+        .catch(() => {});
+    });
+  }, [
+    exportSettings.settings.pandocArgs,
+    exportSettings.settings.pandocPath,
+    readCurrentMarkdownForDocument,
+    translate
+  ]);
+  const exportDocxDocument = useCallback(() => exportPandocDocument("docx"), [exportPandocDocument]);
+  const exportEpubDocument = useCallback(() => exportPandocDocument("epub"), [exportPandocDocument]);
+  const exportLatexDocument = useCallback(() => exportPandocDocument("latex"), [exportPandocDocument]);
   useEffect(() => {
     if (sourceModeAvailable) return;
 
@@ -2138,7 +2201,10 @@ export default function App() {
   const nativeMenuHandlers = useNativeMenuHandlers({
     checkForUpdates: appUpdater.checkForUpdates,
     closeDocument: handleCloseCurrentFile,
+    exportDocx: exportDocxDocument,
+    exportEpub: exportEpubDocument,
     exportHtml: exportHtmlDocument,
+    exportLatex: exportLatexDocument,
     exportPdf: exportPdfDocument,
     insertMarkdownSnippet: handleInsertMarkdownSnippet,
     insertMarkdownTable: handleInsertMarkdownTable,

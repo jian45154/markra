@@ -17,6 +17,7 @@ import {
   mockedCreateAiAgentSessionId,
   mockedCreateNativeMarkdownTreeFile,
   mockedCreateNativeMarkdownTreeFolder,
+  mockedDetectNativePandocPath,
   mockedCheckNativeAppUpdate,
   mockedDeleteNativeMarkdownTreeFile,
   mockedFetchAiProviderModels,
@@ -53,7 +54,9 @@ import {
   mockedResolveDesktopPlatform,
   mockedSaveNativeHtmlFile,
   mockedSaveNativeMarkdownFile,
+  mockedSaveNativePandocFile,
   mockedSaveNativePdfFile,
+  mockedShowNativePandocSetup,
   mockedSaveStoredCustomThemeCss,
   mockedSaveStoredAiSettings,
   mockedSaveStoredEditorPreferences,
@@ -3884,6 +3887,8 @@ describe("Markra workspace", () => {
       path: "/mock-files/printable.pdf"
     });
     mockedGetStoredExportSettings.mockResolvedValue({
+      pandocArgs: "",
+      pandocPath: "",
       pdfAuthor: "Ada & Co",
       pdfFooter: "Footer",
       pdfHeader: "Header",
@@ -3938,9 +3943,160 @@ describe("Markra workspace", () => {
     }
   });
 
+  it("exports the current markdown document through Pandoc from the native menu", async () => {
+    mockedSaveNativePandocFile.mockResolvedValue({
+      name: "portable.docx",
+      path: "/mock-files/portable.docx"
+    });
+    mockedGetStoredExportSettings.mockResolvedValue({
+      pandocArgs: "--toc",
+      pandocPath: "/usr/local/bin/pandoc",
+      pdfAuthor: "",
+      pdfFooter: "",
+      pdfHeader: "",
+      pdfHeightMm: 297,
+      pdfMarginMm: 18,
+      pdfMarginPreset: "default",
+      pdfPageBreakOnH1: false,
+      pdfPageSize: "default",
+      pdfWidthMm: 210
+    });
+    mockOpenMarkdownFile({
+      content: "# Portable\n\n![Chart](assets/chart.png)\n\nExport me.",
+      name: "portable.md",
+      path: mockNativePath
+    });
+
+    renderApp();
+
+    await waitFor(() => expect(mockedInstallNativeApplicationMenu).toHaveBeenCalledTimes(1));
+    const menuHandlers = mockedInstallNativeApplicationMenu.mock.calls[0]?.[0] as NativeMenuHandlers;
+
+    await act(async () => {
+      await menuHandlers.openDocument?.();
+    });
+    expect(await screen.findByRole("heading", { name: "Portable" })).toBeInTheDocument();
+
+    await act(async () => {
+      await menuHandlers.exportDocx?.();
+    });
+
+    await waitFor(() =>
+      expect(mockedSaveNativePandocFile).toHaveBeenCalledWith({
+        documentPath: mockNativePath,
+        format: "docx",
+        markdown: expect.stringContaining("![Chart](assets/chart.png)"),
+        pandocArgs: "--toc",
+        pandocPath: "/usr/local/bin/pandoc",
+        suggestedName: "portable.docx"
+      })
+    );
+  });
+
+  it("shows Pandoc setup actions when Pandoc export cannot find Pandoc", async () => {
+    mockedSaveNativePandocFile.mockRejectedValue(
+      new Error("Pandoc export requires Pandoc. Install Pandoc or set the executable path in Export settings.")
+    );
+    mockOpenMarkdownFile({
+      content: "# Portable\n\nExport me.",
+      name: "portable.md",
+      path: mockNativePath
+    });
+
+    renderApp();
+
+    await waitFor(() => expect(mockedInstallNativeApplicationMenu).toHaveBeenCalledTimes(1));
+    const menuHandlers = mockedInstallNativeApplicationMenu.mock.calls[0]?.[0] as NativeMenuHandlers;
+
+    await act(async () => {
+      await menuHandlers.openDocument?.();
+    });
+
+    await act(async () => {
+      await menuHandlers.exportDocx?.();
+    });
+
+    await waitFor(() =>
+      expect(mockedShowNativePandocSetup).toHaveBeenCalledWith({
+        cancelLabel: "Cancel",
+        installLabel: "Install Pandoc",
+        message: "Install Pandoc to continue exporting DOCX, EPUB, or LaTeX files.",
+        setPathLabel: "Set Pandoc path",
+        title: "Pandoc required"
+      })
+    );
+
+    mockedShowNativePandocSetup.mockResolvedValueOnce("install");
+    await act(async () => {
+      await menuHandlers.exportDocx?.();
+    });
+    expect(mockedOpenNativeExternalUrl).toHaveBeenCalledWith("https://pandoc.org/installing.html");
+
+    mockedShowNativePandocSetup.mockResolvedValueOnce("setPath");
+    await act(async () => {
+      await menuHandlers.exportDocx?.();
+    });
+    expect(mockedOpenSettingsWindow).toHaveBeenCalledWith("exportPandocPath");
+  });
+
+  it("opens settings directly to the Pandoc path target", async () => {
+    window.history.pushState({}, "", "/?settings=1&settingsTarget=exportPandocPath");
+    mockedGetStoredExportSettings.mockResolvedValue({
+      pandocArgs: "",
+      pandocPath: "",
+      pdfAuthor: "",
+      pdfFooter: "",
+      pdfHeader: "",
+      pdfHeightMm: 297,
+      pdfMarginMm: 18,
+      pdfMarginPreset: "default",
+      pdfPageBreakOnH1: false,
+      pdfPageSize: "default",
+      pdfWidthMm: 210
+    });
+
+    renderApp();
+
+    expect(await screen.findByRole("heading", { name: "Export" })).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByLabelText("Pandoc path")).toHaveFocus());
+  });
+
+  it("detects the Pandoc executable path from export settings", async () => {
+    window.history.pushState({}, "", "/?settings=1&settingsTarget=exportPandocPath");
+    mockedDetectNativePandocPath.mockResolvedValue("/opt/homebrew/bin/pandoc");
+    mockedGetStoredExportSettings.mockResolvedValue({
+      pandocArgs: "",
+      pandocPath: "",
+      pdfAuthor: "",
+      pdfFooter: "",
+      pdfHeader: "",
+      pdfHeightMm: 297,
+      pdfMarginMm: 18,
+      pdfMarginPreset: "default",
+      pdfPageBreakOnH1: false,
+      pdfPageSize: "default",
+      pdfWidthMm: 210
+    });
+
+    renderApp();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Detect path" }));
+
+    await waitFor(() =>
+      expect(mockedSaveStoredExportSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          pandocPath: "/opt/homebrew/bin/pandoc"
+        })
+      )
+    );
+    expect(screen.getByLabelText("Pandoc path")).toHaveValue("/opt/homebrew/bin/pandoc");
+  });
+
   it("saves the PDF export margin from the settings export page", async () => {
     window.history.pushState({}, "", "/?settings");
     mockedGetStoredExportSettings.mockResolvedValue({
+      pandocArgs: "",
+      pandocPath: "",
       pdfAuthor: "",
       pdfFooter: "",
       pdfHeader: "",
@@ -3977,10 +4133,14 @@ describe("Markra workspace", () => {
     fireEvent.change(screen.getByLabelText("Header"), { target: { value: "Draft" } });
     fireEvent.change(screen.getByLabelText("Footer"), { target: { value: "Page" } });
     fireEvent.change(screen.getByLabelText("Author"), { target: { value: "Ada" } });
+    fireEvent.change(screen.getByLabelText("Pandoc path"), { target: { value: "/usr/local/bin/pandoc" } });
+    fireEvent.change(screen.getByLabelText("Pandoc arguments"), { target: { value: "--toc" } });
 
     await waitFor(() =>
       expect(mockedSaveStoredExportSettings).toHaveBeenCalledWith(
         expect.objectContaining({
+          pandocArgs: "--toc",
+          pandocPath: "/usr/local/bin/pandoc",
           pdfAuthor: "Ada",
           pdfFooter: "Page",
           pdfHeader: "Draft",
@@ -3995,6 +4155,8 @@ describe("Markra workspace", () => {
     );
     expect(mockedNotifyAppExportSettingsChanged).toHaveBeenCalledWith(
       expect.objectContaining({
+        pandocArgs: "--toc",
+        pandocPath: "/usr/local/bin/pandoc",
         pdfAuthor: "Ada",
         pdfFooter: "Page",
         pdfHeader: "Draft",

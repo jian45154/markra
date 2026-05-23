@@ -2371,14 +2371,37 @@ export function EditorSettings({
 }
 
 export function ExportSettings({
+  focusTarget = null,
+  onDetectPandocPath,
+  onFocusTargetHandled,
   onUpdateSettings,
   settings,
   translate
 }: {
+  focusTarget?: "pandocPath" | null;
+  onDetectPandocPath?: () => unknown;
+  onFocusTargetHandled?: () => unknown;
   onUpdateSettings: (settings: ExportSettingsValue) => unknown;
   settings: ExportSettingsValue;
   translate: Translate;
 }) {
+  const pandocPathTargetRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (focusTarget !== "pandocPath") return;
+
+    const focusFrame = window.requestAnimationFrame(() => {
+      const target = pandocPathTargetRef.current;
+      target?.scrollIntoView?.({ block: "center" });
+      target?.querySelector<HTMLInputElement>("input")?.focus();
+      onFocusTargetHandled?.();
+    });
+
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+    };
+  }, [focusTarget, onFocusTargetHandled]);
+
   return (
     <>
       <SettingsSection label={translate("settings.sections.pdfExport")}>
@@ -2536,6 +2559,55 @@ export function ExportSettings({
                 onUpdateSettings({
                   ...settings,
                   pdfAuthor: value
+                })
+              }
+            />
+          }
+        />
+      </SettingsSection>
+
+      <SettingsSection label={translate("settings.sections.pandocExport")}>
+        <div ref={pandocPathTargetRef} data-settings-target="pandocPath">
+          <SettingsRow
+            title={translate("settings.export.pandocPath")}
+            description={translate("settings.export.pandocPathDescription")}
+            action={
+              <div className="inline-flex items-center gap-2 max-[760px]:w-full max-[760px]:flex-wrap">
+                <SettingsTextInput
+                  label={translate("settings.export.pandocPath")}
+                  value={settings.pandocPath}
+                  widthClassName="w-80 max-[760px]:w-full"
+                  onChange={(value) =>
+                    onUpdateSettings({
+                      ...settings,
+                      pandocPath: value
+                    })
+                  }
+                />
+                <SettingsButton
+                  label={translate("settings.export.detectPandocPath")}
+                  onClick={() => onDetectPandocPath?.()}
+                >
+                  <RefreshCw aria-hidden="true" size={13} />
+                  <span>{translate("settings.export.detectPandocPath")}</span>
+                </SettingsButton>
+              </div>
+            }
+          />
+        </div>
+        <SettingsRow
+          title={translate("settings.export.pandocArgs")}
+          description={translate("settings.export.pandocArgsDescription")}
+          action={
+            <SettingsTextarea
+              label={translate("settings.export.pandocArgs")}
+              value={settings.pandocArgs}
+              widthClassName="w-80"
+              spellCheck={false}
+              onChange={(value) =>
+                onUpdateSettings({
+                  ...settings,
+                  pandocArgs: value
                 })
               }
             />

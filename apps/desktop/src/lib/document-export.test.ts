@@ -4,6 +4,9 @@ describe("document export helpers", () => {
   it("derives export file names from markdown document names", () => {
     expect(exportDocumentFileName("Draft.md", "html")).toBe("Draft.html");
     expect(exportDocumentFileName("Research.markdown", "pdf")).toBe("Research.pdf");
+    expect(exportDocumentFileName("Manuscript.md", "docx")).toBe("Manuscript.docx");
+    expect(exportDocumentFileName("Book.md", "epub")).toBe("Book.epub");
+    expect(exportDocumentFileName("Paper.md", "latex")).toBe("Paper.tex");
     expect(exportDocumentFileName("Notes.txt", "html")).toBe("Notes.html");
     expect(exportDocumentFileName("", "html")).toBe("Untitled.html");
   });

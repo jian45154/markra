@@ -312,7 +312,10 @@ describe("native menu", () => {
     const target = document.createElement("main");
     const paper = document.createElement("article");
     const handlers: NativeMenuHandlers = {
+      exportDocx: vi.fn(),
+      exportEpub: vi.fn(),
       exportHtml: vi.fn(),
+      exportLatex: vi.fn(),
       exportPdf: vi.fn(),
       formatBold: vi.fn(),
       formatCodeBlock: vi.fn(),
@@ -347,18 +350,27 @@ describe("native menu", () => {
     expect(exportMenu).toMatchObject({ text: "Export" });
     expect(menuItemById(menuItemChildren(exportMenu), "markra:context:export-pdf")).toMatchObject({ text: "Export PDF" });
     expect(menuItemById(menuItemChildren(exportMenu), "markra:context:export-html")).toMatchObject({ text: "Export HTML" });
+    expect(menuItemById(menuItemChildren(exportMenu), "markra:context:export-docx")).toMatchObject({ text: "Export DOCX" });
+    expect(menuItemById(menuItemChildren(exportMenu), "markra:context:export-epub")).toMatchObject({ text: "Export EPUB" });
+    expect(menuItemById(menuItemChildren(exportMenu), "markra:context:export-latex")).toMatchObject({ text: "Export LaTeX" });
 
     menuItemById(items, "markra:context:strikethrough").action?.("markra:context:strikethrough");
     menuItemById(items, "markra:context:code-block").action?.("markra:context:code-block");
     menuItemById(items, "markra:context:image").action?.("markra:context:image");
     menuItemById(items, "markra:context:export-pdf").action?.("markra:context:export-pdf");
     menuItemById(items, "markra:context:export-html").action?.("markra:context:export-html");
+    menuItemById(items, "markra:context:export-docx").action?.("markra:context:export-docx");
+    menuItemById(items, "markra:context:export-epub").action?.("markra:context:export-epub");
+    menuItemById(items, "markra:context:export-latex").action?.("markra:context:export-latex");
 
     expect(handlers.formatStrikethrough).toHaveBeenCalledTimes(1);
     expect(handlers.formatCodeBlock).toHaveBeenCalledTimes(1);
     expect(handlers.insertImage).toHaveBeenCalledTimes(1);
     expect(handlers.exportPdf).toHaveBeenCalledTimes(1);
     expect(handlers.exportHtml).toHaveBeenCalledTimes(1);
+    expect(handlers.exportDocx).toHaveBeenCalledTimes(1);
+    expect(handlers.exportEpub).toHaveBeenCalledTimes(1);
+    expect(handlers.exportLatex).toHaveBeenCalledTimes(1);
   });
 
   it("shows editor AI context actions only when an AI target is available", async () => {

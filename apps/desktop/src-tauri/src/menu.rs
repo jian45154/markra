@@ -140,8 +140,17 @@ fn create_application_menu_for_language<R: tauri::Runtime>(
     )?;
     let export_pdf = app_menu_item(app, "exportPdf", labels.export_pdf, "CmdOrCtrl+P")?;
     let export_html = app_menu_item(app, "exportHtml", labels.export_html, "CmdOrCtrl+Shift+E")?;
+    let export_docx = app_menu_item_without_accelerator(app, "exportDocx", labels.export_docx)?;
+    let export_epub = app_menu_item_without_accelerator(app, "exportEpub", labels.export_epub)?;
+    let export_latex = app_menu_item_without_accelerator(app, "exportLatex", labels.export_latex)?;
     let export_menu = SubmenuBuilder::with_id(app, "markra:file:export", labels.export)
-        .items(&[&export_pdf, &export_html])
+        .items(&[
+            &export_pdf,
+            &export_html,
+            &export_docx,
+            &export_epub,
+            &export_latex,
+        ])
         .build()?;
     let settings = app_menu_item(app, SETTINGS_WINDOW_COMMAND, labels.settings, "CmdOrCtrl+,")?;
     let check_updates =
@@ -372,6 +381,9 @@ pub(crate) fn is_frontend_menu_command(command: &str) -> bool {
             | "saveDocumentAs"
             | "exportPdf"
             | "exportHtml"
+            | "exportDocx"
+            | "exportEpub"
+            | "exportLatex"
             | "formatBold"
             | "formatItalic"
             | "formatStrikethrough"
@@ -419,6 +431,9 @@ mod tests {
         assert!(is_frontend_menu_command("saveDocument"));
         assert!(is_frontend_menu_command("exportPdf"));
         assert!(is_frontend_menu_command("exportHtml"));
+        assert!(is_frontend_menu_command("exportDocx"));
+        assert!(is_frontend_menu_command("exportEpub"));
+        assert!(is_frontend_menu_command("exportLatex"));
         assert!(is_frontend_menu_command("formatBold"));
         assert!(is_frontend_menu_command("insertImage"));
         assert!(is_frontend_menu_command("insertTable"));

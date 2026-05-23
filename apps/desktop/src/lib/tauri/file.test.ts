@@ -9,6 +9,7 @@ import {
   createNativeMarkdownTreeFolder,
   deleteNativeMarkdownTemplateFile,
   deleteNativeMarkdownTreeFile,
+  detectNativePandocPath,
   downloadNativeWebImage,
   installNativeMarkdownFileDrop,
   listenNativeOpenedMarkdownPaths,
@@ -26,6 +27,7 @@ import {
   resolveNativeMarkdownPath,
   saveNativeClipboardImage,
   saveNativeHtmlFile,
+  saveNativePandocFile,
   saveNativePdfFile,
   renameNativeMarkdownTreeFile,
   saveNativeMarkdownFile,
@@ -580,6 +582,136 @@ describe("native file access", () => {
     ).resolves.toBeNull();
 
     expect(mockedInvoke).not.toHaveBeenCalled();
+  });
+
+  it("exports markdown through Pandoc with the selected native save dialog filter", async () => {
+    mockedSave.mockResolvedValue("/mock-files/draft.docx");
+    mockedInvoke.mockResolvedValue(undefined);
+
+    await expect(
+      saveNativePandocFile({
+        documentPath: "/mock-files/draft.md",
+        format: "docx",
+        markdown: "# Draft\n\nReady.",
+        pandocArgs: "--toc",
+        pandocPath: "/opt/homebrew/bin/pandoc",
+        suggestedName: "draft.docx"
+      })
+    ).resolves.toEqual({
+      path: "/mock-files/draft.docx",
+      name: "draft.docx"
+    });
+
+    expect(mockedInvoke).toHaveBeenNthCalledWith(1, "check_pandoc_available", {
+      pandocPath: "/opt/homebrew/bin/pandoc"
+    });
+    expect(mockedSave).toHaveBeenCalledWith({
+      defaultPath: "draft.docx",
+      filters: [{ name: "Word document", extensions: ["docx"] }]
+    });
+    expect(mockedInvoke).toHaveBeenNthCalledWith(2, "export_pandoc_file", {
+      documentPath: "/mock-files/draft.md",
+      format: "docx",
+      markdown: "# Draft\n\nReady.",
+      pandocArgs: "--toc",
+      pandocPath: "/opt/homebrew/bin/pandoc",
+      path: "/mock-files/draft.docx"
+    });
+  });
+
+  it("checks Pandoc availability before opening the native save dialog", async () => {
+    mockedInvoke.mockRejectedValue(new Error("Pandoc export requires Pandoc."));
+
+    await expect(
+      saveNativePandocFile({
+        documentPath: null,
+        format: "docx",
+        markdown: "# Draft",
+        pandocArgs: "",
+        pandocPath: "",
+        suggestedName: "draft.docx"
+      })
+    ).rejects.toThrow("Pandoc export requires Pandoc.");
+
+    expect(mockedInvoke).toHaveBeenCalledWith("check_pandoc_available", {
+      pandocPath: ""
+    });
+    expect(mockedSave).not.toHaveBeenCalled();
+  });
+
+  it("detects the native Pandoc executable path", async () => {
+    mockedInvoke.mockResolvedValue("/opt/homebrew/bin/pandoc");
+
+    await expect(detectNativePandocPath()).resolves.toBe("/opt/homebrew/bin/pandoc");
+
+    expect(mockedInvoke).toHaveBeenCalledWith("detect_pandoc_path");
+  });
+
+  it("returns null when native Pandoc detection finds no executable", async () => {
+    mockedInvoke.mockResolvedValue(null);
+
+    await expect(detectNativePandocPath()).resolves.toBeNull();
+  });
+
+  it("uses EPUB and LaTeX save filters for Pandoc exports", async () => {
+    mockedSave.mockResolvedValueOnce("/mock-files/book.epub").mockResolvedValueOnce("/mock-files/paper.tex");
+    mockedInvoke.mockResolvedValue(undefined);
+
+    await saveNativePandocFile({
+      documentPath: null,
+      format: "epub",
+      markdown: "# Book",
+      pandocArgs: "",
+      pandocPath: "",
+      suggestedName: "book.epub"
+    });
+    await saveNativePandocFile({
+      documentPath: null,
+      format: "latex",
+      markdown: "# Paper",
+      pandocArgs: "",
+      pandocPath: "",
+      suggestedName: "paper.tex"
+    });
+
+    expect(mockedInvoke).toHaveBeenNthCalledWith(1, "check_pandoc_available", {
+      pandocPath: ""
+    });
+    expect(mockedInvoke).toHaveBeenNthCalledWith(3, "check_pandoc_available", {
+      pandocPath: ""
+    });
+    expect(mockedSave).toHaveBeenNthCalledWith(1, {
+      defaultPath: "book.epub",
+      filters: [{ name: "EPUB", extensions: ["epub"] }]
+    });
+    expect(mockedSave).toHaveBeenNthCalledWith(2, {
+      defaultPath: "paper.tex",
+      filters: [{ name: "LaTeX", extensions: ["tex"] }]
+    });
+  });
+
+  it("does not run Pandoc export when the save dialog is canceled", async () => {
+    mockedSave.mockResolvedValue(null);
+    mockedInvoke.mockResolvedValue(undefined);
+
+    await expect(
+      saveNativePandocFile({
+        documentPath: null,
+        format: "epub",
+        markdown: "# Draft",
+        pandocArgs: "",
+        pandocPath: "",
+        suggestedName: "draft.epub"
+      })
+    ).resolves.toBeNull();
+
+    expect(mockedInvoke).toHaveBeenCalledWith("check_pandoc_available", {
+      pandocPath: ""
+    });
+    expect(mockedInvoke).not.toHaveBeenCalledWith(
+      "export_pandoc_file",
+      expect.any(Object)
+    );
   });
 
   it("saves a clipboard image next to the current markdown file through Tauri", async () => {

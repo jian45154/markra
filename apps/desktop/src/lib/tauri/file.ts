@@ -95,6 +95,17 @@ export type SaveNativePdfFileInput = {
   contents: string;
 };
 
+export type NativePandocExportFormat = "docx" | "epub" | "latex";
+
+export type SaveNativePandocFileInput = {
+  documentPath: string | null;
+  format: NativePandocExportFormat;
+  markdown: string;
+  pandocArgs: string;
+  pandocPath: string;
+  suggestedName: string;
+};
+
 export type SavedNativeMarkdownFile = {
   path: string;
   name: string;
@@ -106,6 +117,11 @@ export type SavedNativeHtmlFile = {
 };
 
 export type SavedNativePdfFile = {
+  path: string;
+  name: string;
+};
+
+export type SavedNativePandocFile = {
   path: string;
   name: string;
 };
@@ -215,6 +231,27 @@ const pdfFilters = [
     extensions: ["pdf"]
   }
 ];
+
+const pandocExportFilters: Record<NativePandocExportFormat, Array<{ extensions: string[]; name: string }>> = {
+  docx: [
+    {
+      name: "Word document",
+      extensions: ["docx"]
+    }
+  ],
+  epub: [
+    {
+      name: "EPUB",
+      extensions: ["epub"]
+    }
+  ],
+  latex: [
+    {
+      name: "LaTeX",
+      extensions: ["tex"]
+    }
+  ]
+};
 
 function isMarkdownTreeFilePath(path: string) {
   return /\.(md|markdown)$/i.test(path);
@@ -619,6 +656,47 @@ export async function saveNativePdfFile({
     path: targetPath,
     name: fileNameFromPath(targetPath)
   };
+}
+
+export async function saveNativePandocFile({
+  documentPath,
+  format,
+  markdown,
+  pandocArgs,
+  pandocPath,
+  suggestedName
+}: SaveNativePandocFileInput): Promise<SavedNativePandocFile | null> {
+  await invoke("check_pandoc_available", {
+    pandocPath
+  });
+
+  const targetPath = await save({
+    defaultPath: suggestedName,
+    filters: pandocExportFilters[format]
+  });
+
+  if (!targetPath) return null;
+
+  await invoke("export_pandoc_file", {
+    documentPath,
+    format,
+    markdown,
+    pandocArgs,
+    pandocPath,
+    path: targetPath
+  });
+
+  return {
+    path: targetPath,
+    name: fileNameFromPath(targetPath)
+  };
+}
+
+export async function detectNativePandocPath(): Promise<string | null> {
+  const path = await invoke<string | null>("detect_pandoc_path");
+  const trimmedPath = typeof path === "string" ? path.trim() : "";
+
+  return trimmedPath || null;
 }
 
 function imageAltFromFileName(fileName: string) {

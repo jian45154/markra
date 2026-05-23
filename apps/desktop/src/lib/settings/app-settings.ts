@@ -128,6 +128,8 @@ export type EditorPreferences = {
   showWordCount: boolean;
 };
 export type ExportSettings = {
+  pandocArgs: string;
+  pandocPath: string;
   pdfAuthor: string;
   pdfFooter: string;
   pdfHeader: string;
@@ -256,6 +258,8 @@ export const defaultEditorPreferences: EditorPreferences = {
 };
 
 export const defaultExportSettings: ExportSettings = {
+  pandocArgs: "",
+  pandocPath: "",
   pdfAuthor: "",
   pdfFooter: "",
   pdfHeader: "",
@@ -975,6 +979,8 @@ export function normalizeExportSettings(value: unknown): ExportSettings {
     : exportPageSizeDimensions[pdfPageSize];
 
   return {
+    pandocArgs: normalizeExportText(settings.pandocArgs, 1000),
+    pandocPath: normalizeExportText(settings.pandocPath, 500),
     pdfAuthor: normalizeExportText(settings.pdfAuthor),
     pdfFooter: normalizeExportText(settings.pdfFooter),
     pdfHeader: normalizeExportText(settings.pdfHeader),
@@ -1073,10 +1079,10 @@ function normalizeExportPageDimension(value: unknown, fallback: number) {
   return Math.min(Math.max(Math.round(value), 50), 2000);
 }
 
-function normalizeExportText(value: unknown) {
+function normalizeExportText(value: unknown, maxLength = 200) {
   if (typeof value !== "string") return "";
 
-  return value.trim().slice(0, 200);
+  return value.trim().slice(0, maxLength);
 }
 
 export function normalizeWebSearchSettings(value: unknown): WebSearchSettings {

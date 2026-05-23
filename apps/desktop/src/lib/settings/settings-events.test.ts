@@ -186,6 +186,8 @@ describe("settings events", () => {
     const cleanup = await listenAppExportSettingsChanged(onSettingsChanged);
     const listener = mockedListen.mock.calls[0]?.[1];
     const settings = {
+      pandocArgs: "--toc",
+      pandocPath: "/usr/local/bin/pandoc",
       pdfAuthor: "",
       pdfFooter: "",
       pdfHeader: "",

@@ -7,6 +7,7 @@ import {
   createNativeMarkdownTreeFile,
   createNativeMarkdownTreeFolder,
   deleteNativeMarkdownTreeFile,
+  detectNativePandocPath,
   downloadNativeWebImage,
   openNativeMarkdownFolder,
   openNativeMarkdownFolderInNewWindow,
@@ -19,8 +20,10 @@ import {
   resolveNativeMarkdownPath,
   saveNativeHtmlFile,
   saveNativeMarkdownFile,
+  saveNativePandocFile,
   saveNativePdfFile,
   setNativeEditorWindowRestoreState,
+  showNativePandocSetup,
   showNativeMarkdownFileTreeContextMenu,
   installNativeMarkdownFileDrop,
   listNativeMarkdownFilesForPath,
@@ -104,6 +107,7 @@ vi.mock("../lib/tauri", () => ({
   createNativeMarkdownTreeFile: vi.fn(),
   createNativeMarkdownTreeFolder: vi.fn(),
   deleteNativeMarkdownTreeFile: vi.fn(),
+  detectNativePandocPath: vi.fn(),
   downloadNativeWebImage: vi.fn(),
   installNativeMarkdownFileDrop: vi.fn(),
   openNativeMarkdownFolder: vi.fn(),
@@ -123,8 +127,10 @@ vi.mock("../lib/tauri", () => ({
   saveNativeClipboardImage: vi.fn(),
   saveNativeHtmlFile: vi.fn(),
   saveNativeMarkdownFile: vi.fn(),
+  saveNativePandocFile: vi.fn(),
   saveNativePdfFile: vi.fn(),
   setNativeEditorWindowRestoreState: vi.fn(),
+  showNativePandocSetup: vi.fn(),
   showNativeMarkdownFileTreeContextMenu: vi.fn(),
   uploadNativeS3Image: vi.fn(),
   uploadNativeWebDavImage: vi.fn(),
@@ -280,6 +286,8 @@ vi.mock("../lib/settings/app-settings", () => ({
     searxngApiHost: ""
   },
   defaultExportSettings: {
+    pandocArgs: "",
+    pandocPath: "",
     pdfAuthor: "",
     pdfFooter: "",
     pdfHeader: "",
@@ -398,6 +406,8 @@ vi.mock("../lib/settings/app-settings", () => ({
     return nextActions;
   }),
   normalizeExportSettings: vi.fn((settings) => ({
+    pandocArgs: "",
+    pandocPath: "",
     pdfAuthor: "",
     pdfFooter: "",
     pdfHeader: "",
@@ -478,6 +488,7 @@ export const mockedConfirmNativeUnsavedMarkdownDocumentDiscard = vi.mocked(confi
 export const mockedCreateNativeMarkdownTreeFile = vi.mocked(createNativeMarkdownTreeFile);
 export const mockedCreateNativeMarkdownTreeFolder = vi.mocked(createNativeMarkdownTreeFolder);
 export const mockedDeleteNativeMarkdownTreeFile = vi.mocked(deleteNativeMarkdownTreeFile);
+export const mockedDetectNativePandocPath = vi.mocked(detectNativePandocPath);
 export const mockedDownloadNativeWebImage = vi.mocked(downloadNativeWebImage);
 export const mockedOpenNativeMarkdownFileInNewWindow = vi.mocked(openNativeMarkdownFileInNewWindow);
 export const mockedOpenNativeMarkdownPath = vi.mocked(openNativeMarkdownPath);
@@ -488,8 +499,10 @@ export const mockedReadNativeMarkdownTemplateFile = vi.mocked(readNativeMarkdown
 export const mockedResolveNativeMarkdownPath = vi.mocked(resolveNativeMarkdownPath);
 export const mockedSaveNativeHtmlFile = vi.mocked(saveNativeHtmlFile);
 export const mockedSaveNativeMarkdownFile = vi.mocked(saveNativeMarkdownFile);
+export const mockedSaveNativePandocFile = vi.mocked(saveNativePandocFile);
 export const mockedSaveNativePdfFile = vi.mocked(saveNativePdfFile);
 export const mockedSetNativeEditorWindowRestoreState = vi.mocked(setNativeEditorWindowRestoreState);
+export const mockedShowNativePandocSetup = vi.mocked(showNativePandocSetup);
 export const mockedShowNativeMarkdownFileTreeContextMenu = vi.mocked(showNativeMarkdownFileTreeContextMenu);
 export const mockedInstallNativeMarkdownFileDrop = vi.mocked(installNativeMarkdownFileDrop);
 export const mockedListNativeMarkdownFilesForPath = vi.mocked(listNativeMarkdownFilesForPath);
@@ -633,6 +646,7 @@ export function installAppTestHarness() {
     mockedCreateNativeMarkdownTreeFile.mockReset();
     mockedCreateNativeMarkdownTreeFolder.mockReset();
     mockedDeleteNativeMarkdownTreeFile.mockReset();
+    mockedDetectNativePandocPath.mockReset();
     mockedInstallNativeMarkdownFileDrop.mockReset();
     mockedOpenNativeMarkdownFolder.mockReset();
     mockedOpenNativeMarkdownFolderInNewWindow.mockReset();
@@ -644,7 +658,9 @@ export function installAppTestHarness() {
     mockedReadNativeMarkdownTemplateFile.mockReset();
     mockedResolveNativeMarkdownPath.mockReset();
     mockedSaveNativeHtmlFile.mockReset();
+    mockedSaveNativePandocFile.mockReset();
     mockedSaveNativePdfFile.mockReset();
+    mockedShowNativePandocSetup.mockReset();
     mockedRenameNativeMarkdownTreeFile.mockReset();
     mockedSaveNativeMarkdownFile.mockReset();
     mockedShowNativeMarkdownFileTreeContextMenu.mockReset();
@@ -746,6 +762,11 @@ export function installAppTestHarness() {
       name: "Untitled.pdf",
       path: "/mock-files/Untitled.pdf"
     });
+    mockedSaveNativePandocFile.mockResolvedValue({
+      name: "Untitled.docx",
+      path: "/mock-files/Untitled.docx"
+    });
+    mockedShowNativePandocSetup.mockResolvedValue("cancel");
     mockedShowNativeMarkdownFileTreeContextMenu.mockResolvedValue(undefined);
     mockedSetNativeEditorWindowRestoreState.mockResolvedValue(undefined);
     mockedListenAppAiSettingsChanged.mockResolvedValue(() => {});
@@ -769,6 +790,7 @@ export function installAppTestHarness() {
       relativePath: "Research"
     });
     mockedDeleteNativeMarkdownTreeFile.mockResolvedValue(undefined);
+    mockedDetectNativePandocPath.mockResolvedValue(null);
     mockedRenameNativeMarkdownTreeFile.mockResolvedValue({
       name: "Renamed.md",
       path: "/mock-files/vault/Renamed.md",
@@ -846,6 +868,8 @@ export function installAppTestHarness() {
       showWordCount: true
     });
     mockedGetStoredExportSettings.mockResolvedValue({
+      pandocArgs: "",
+      pandocPath: "",
       pdfAuthor: "",
       pdfFooter: "",
       pdfHeader: "",
