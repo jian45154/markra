@@ -8,7 +8,7 @@ import { stripDebugPlugin } from "./scripts/vite/strip-debug";
 const desktopPackage = JSON.parse(
   readFileSync(new URL("./package.json", import.meta.url), "utf8")
 ) as { version?: string };
-const chunkSizeWarningLimitKb = 1200;
+const chunkSizeWarningLimitKb = 3000;
 const fontAssetPattern = /\.(?:otf|ttf|woff2?)$/i;
 const imageAssetPattern = /\.(?:avif|gif|ico|jpe?g|png|svg|webp)$/i;
 const browserNodeStubPath = fileURLToPath(new URL("./src/lib/browser-node-stub.ts", import.meta.url));
@@ -46,7 +46,7 @@ const milkdownDependencies = dependencyPattern([
 ]);
 const tauriDependencies = dependencyPattern(["@tauri-apps"]);
 const iconDependencies = dependencyPattern(["lucide-react", "lucide-static"]);
-const piAgentDependencies = dependencyPattern(["@mariozechner/pi-agent-core", "@mariozechner/pi-ai", "typebox"]);
+const piAgentDependencies = dependencyPattern(["@earendil-works/pi-agent-core", "@earendil-works/pi-ai", "typebox"]);
 const codeEditorDependencies = dependencyPattern(["@codemirror", "codemirror"]);
 const dndDependencies = dependencyPattern(["@dnd-kit"]);
 const mathDependencies = dependencyPattern(["katex"]);

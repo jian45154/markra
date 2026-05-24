@@ -2,9 +2,11 @@ import ts from "typescript";
 import type { Plugin } from "vite";
 
 const supportedScriptPattern = /\.[cm]?[jt]sx?$/i;
+const debugCallPattern = /\bdebug\s*\(/;
 
 export function stripDebugStatements(code: string, id: string) {
   if (!supportedScriptPattern.test(id)) return code;
+  if (!debugCallPattern.test(code)) return code;
 
   const sourceFile = ts.createSourceFile(id, code, ts.ScriptTarget.Latest, true, scriptKindForFile(id));
   const ranges: Array<{ end: number; start: number }> = [];
