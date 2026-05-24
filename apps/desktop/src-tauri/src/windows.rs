@@ -2,7 +2,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 #[cfg(target_os = "macos")]
 use tauri::TitleBarStyle;
-use tauri::{utils::config::Color, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{utils::config::Color, Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
 
 const BLANK_EDITOR_WINDOW_LABEL_PREFIX: &str = "markra-editor-";
 const BLANK_EDITOR_WINDOW_URL: &str = "index.html?blank=1";
@@ -14,6 +14,8 @@ pub(crate) const OPEN_BLANK_EDITOR_WINDOW_COMMAND: &str = "open_blank_editor_win
 pub(crate) const OPEN_SETTINGS_WINDOW_COMMAND: &str = "open_settings_window";
 const SETTINGS_WINDOW_LABEL: &str = "markra-settings";
 const SETTINGS_WINDOW_URL: &str = "index.html?settings=1";
+const SETTINGS_WINDOW_TARGET_EVENT: &str = "markra://settings-window-target";
+const SETTINGS_WINDOW_TARGET_EXPORT_PANDOC_PATH: &str = "exportPandocPath";
 const SETTINGS_WINDOW_DECORATIONS: bool = true;
 const SETTINGS_WINDOW_WIDTH: f64 = 1040.0;
 const SETTINGS_WINDOW_HEIGHT: f64 = 720.0;
@@ -191,6 +193,26 @@ pub(crate) fn editor_window_url_for_folder(path: &str) -> String {
     format!("index.html?folder={}", encode_url_query_component(path))
 }
 
+fn normalized_settings_window_target(target: Option<&str>) -> Option<&'static str> {
+    match target {
+        Some(SETTINGS_WINDOW_TARGET_EXPORT_PANDOC_PATH) => {
+            Some(SETTINGS_WINDOW_TARGET_EXPORT_PANDOC_PATH)
+        }
+        _ => None,
+    }
+}
+
+fn settings_window_url(target: Option<&str>) -> String {
+    if let Some(target) = normalized_settings_window_target(target) {
+        return format!(
+            "{SETTINGS_WINDOW_URL}&settingsTarget={}",
+            encode_url_query_component(target)
+        );
+    }
+
+    SETTINGS_WINDOW_URL.to_string()
+}
+
 pub(crate) fn spawn_editor_window<R>(app: tauri::AppHandle<R>, url: String)
 where
     R: tauri::Runtime,
@@ -283,14 +305,27 @@ fn settings_window_hidden_title() -> bool {
     SETTINGS_WINDOW_HIDDEN_TITLE
 }
 
-pub(crate) fn spawn_settings_window<R>(app: tauri::AppHandle<R>)
+#[derive(Clone, serde::Serialize)]
+struct SettingsWindowTargetPayload {
+    target: String,
+}
+
+pub(crate) fn spawn_settings_window<R>(app: tauri::AppHandle<R>, target: Option<String>)
 where
     R: tauri::Runtime,
 {
+    let target = normalized_settings_window_target(target.as_deref()).map(str::to_string);
+
     std::thread::spawn(move || {
         if let Some(window) = app.get_webview_window(SETTINGS_WINDOW_LABEL) {
             let _ = window.show();
             let _ = window.set_focus();
+            if let Some(target) = target.clone() {
+                let _ = window.emit(
+                    SETTINGS_WINDOW_TARGET_EVENT,
+                    SettingsWindowTargetPayload { target },
+                );
+            }
             return;
         }
 
@@ -300,7 +335,7 @@ where
         let builder = WebviewWindowBuilder::new(
             &app,
             SETTINGS_WINDOW_LABEL,
-            WebviewUrl::App(SETTINGS_WINDOW_URL.into()),
+            WebviewUrl::App(settings_window_url(target.as_deref()).into()),
         )
         .title("Settings")
         .inner_size(width, height)
@@ -334,8 +369,8 @@ where
 }
 
 #[tauri::command]
-pub(crate) fn open_settings_window(app: tauri::AppHandle) {
-    spawn_settings_window(app);
+pub(crate) fn open_settings_window(app: tauri::AppHandle, target: Option<String>) {
+    spawn_settings_window(app, target);
 }
 
 #[cfg(test)]
@@ -511,6 +546,14 @@ mod tests {
     fn exposes_window_command_names_for_js_menus() {
         assert_eq!(OPEN_BLANK_EDITOR_WINDOW_COMMAND, "open_blank_editor_window");
         assert_eq!(OPEN_SETTINGS_WINDOW_COMMAND, "open_settings_window");
+    }
+
+    #[test]
+    fn targets_export_pandoc_settings_from_window_url() {
+        assert_eq!(
+            settings_window_url(Some("exportPandocPath")),
+            "index.html?settings=1&settingsTarget=exportPandocPath"
+        );
     }
 
     #[test]

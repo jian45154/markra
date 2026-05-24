@@ -36,6 +36,7 @@ export function SettingsWindow() {
     handleResetWelcomeDocument,
     handleSaveAiSettings,
     handleTestAiProvider,
+    handleDetectPandocPath,
     handleUpdateAiSettings,
     handleUpdateEditorPreferences,
     handleUpdateMarkdownTemplate,
@@ -45,6 +46,8 @@ export function SettingsWindow() {
     selectedAiProvider,
     setActiveCategory,
     setSelectedAiProviderId,
+    settingsFocusTarget,
+    clearSettingsFocusTarget,
     translate,
     webSearchSettings,
     welcomeReset
@@ -165,8 +168,11 @@ export function SettingsWindow() {
           ) : null}
           {activeCategory === "export" ? (
             <ExportSettings
+              focusTarget={settingsFocusTarget}
               settings={exportSettings}
               translate={translate}
+              onDetectPandocPath={handleDetectPandocPath}
+              onFocusTargetHandled={clearSettingsFocusTarget}
               onUpdateSettings={handleUpdateExportSettings}
             />
           ) : null}

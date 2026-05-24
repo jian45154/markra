@@ -20,6 +20,32 @@ pub(crate) struct MarkdownTemplateFile {
     pub(crate) contents: String,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum PandocExportFormat {
+    Docx,
+    Epub,
+    Latex,
+}
+
+impl PandocExportFormat {
+    fn extension(self) -> &'static str {
+        match self {
+            Self::Docx => "docx",
+            Self::Epub => "epub",
+            Self::Latex => "tex",
+        }
+    }
+
+    fn pandoc_writer(self) -> &'static str {
+        match self {
+            Self::Docx => "docx",
+            Self::Epub => "epub",
+            Self::Latex => "latex",
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) enum MarkdownFolderEntryKind {
@@ -753,6 +779,130 @@ fn find_pdf_renderer() -> Option<PathBuf> {
         .find(|candidate| candidate.is_file())
 }
 
+fn pandoc_candidates() -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+
+    for executable in ["pandoc"] {
+        if let Some(candidate) = path_executable(executable) {
+            candidates.push(candidate);
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        candidates.extend([
+            PathBuf::from("/opt/homebrew/bin/pandoc"),
+            PathBuf::from("/usr/local/bin/pandoc"),
+        ]);
+    }
+
+    candidates
+}
+
+fn detect_pandoc_path_from_candidates(
+    candidates: impl IntoIterator<Item = PathBuf>,
+) -> Option<PathBuf> {
+    candidates.into_iter().find(|candidate| candidate.is_file())
+}
+
+fn find_pandoc(path: &str) -> Result<PathBuf, String> {
+    let trimmed_path = path.trim();
+    if !trimmed_path.is_empty() {
+        let candidate = PathBuf::from(trimmed_path);
+        if candidate.is_file() {
+            return Ok(candidate);
+        }
+
+        return Err(format!("Pandoc executable not found: {trimmed_path}"));
+    }
+
+    detect_pandoc_path_from_candidates(pandoc_candidates()).ok_or_else(|| {
+            "Pandoc export requires Pandoc. Install Pandoc or set the executable path in Export settings."
+                .to_string()
+        })
+}
+
+fn unique_pandoc_export_temp_dir() -> PathBuf {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_nanos())
+        .unwrap_or(0);
+
+    std::env::temp_dir().join(format!(
+        "markra-pandoc-export-{}-{nanos}",
+        std::process::id()
+    ))
+}
+
+fn parse_pandoc_extra_args(args: &str) -> Result<Vec<String>, String> {
+    let mut parsed = Vec::new();
+    let mut current = String::new();
+    let mut quote: Option<char> = None;
+    let mut escaped = false;
+
+    for character in args.chars() {
+        if escaped {
+            current.push(character);
+            escaped = false;
+            continue;
+        }
+
+        if character == '\\' {
+            escaped = true;
+            continue;
+        }
+
+        if let Some(quote_character) = quote {
+            if character == quote_character {
+                quote = None;
+            } else {
+                current.push(character);
+            }
+            continue;
+        }
+
+        if character == '\'' || character == '"' {
+            quote = Some(character);
+            continue;
+        }
+
+        if character.is_whitespace() {
+            if !current.is_empty() {
+                parsed.push(current);
+                current = String::new();
+            }
+            continue;
+        }
+
+        current.push(character);
+    }
+
+    if escaped {
+        current.push('\\');
+    }
+
+    if quote.is_some() {
+        return Err("Pandoc arguments contain an unterminated quote".to_string());
+    }
+
+    if !current.is_empty() {
+        parsed.push(current);
+    }
+
+    Ok(parsed)
+}
+
+fn parent_directory_from_path(path: &str) -> Option<PathBuf> {
+    PathBuf::from(path).parent().map(Path::to_path_buf)
+}
+
+fn pandoc_working_directory(document_path: Option<&str>, target_path: &Path) -> PathBuf {
+    document_path
+        .and_then(parent_directory_from_path)
+        .or_else(|| target_path.parent().map(Path::to_path_buf))
+        .unwrap_or_else(std::env::temp_dir)
+}
+
 fn unique_pdf_export_temp_dir() -> PathBuf {
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -859,6 +1009,87 @@ fn export_pdf_file_with_renderer(
             .map_err(|_| "PDF renderer did not create output file".to_string())?;
         if metadata.len() == 0 {
             return Err("PDF renderer created an empty file".to_string());
+        }
+
+        fs::copy(&output_path, &target_path).map_err(|error| error.to_string())?;
+        Ok(())
+    })();
+    let _cleanup_result = fs::remove_dir_all(&temp_root);
+
+    result
+}
+
+fn run_pandoc_process(
+    binary: &Path,
+    working_directory: &Path,
+    args: &[String],
+) -> Result<bool, String> {
+    let status = Command::new(binary)
+        .current_dir(working_directory)
+        .args(args)
+        .status()
+        .map_err(|error| format!("Failed to launch Pandoc: {error}"))?;
+
+    Ok(status.success())
+}
+
+fn export_pandoc_file_with_runner(
+    path: String,
+    markdown: String,
+    format: PandocExportFormat,
+    document_path: Option<String>,
+    pandoc_path: Option<PathBuf>,
+    pandoc_args: String,
+    mut run: impl FnMut(&Path, &Path, &Path, &Path, &[String]) -> Result<bool, String>,
+) -> Result<(), String> {
+    if markdown.trim().is_empty() {
+        return Err("Pandoc export Markdown is empty".to_string());
+    }
+
+    let target_path = PathBuf::from(path);
+    let pandoc_binary = pandoc_path.ok_or_else(|| "Pandoc executable is required".to_string())?;
+    let temp_root = unique_pandoc_export_temp_dir();
+    let source_path = temp_root.join("input.md");
+    let output_path = temp_root.join(format!("output.{}", format.extension()));
+    let working_directory = pandoc_working_directory(document_path.as_deref(), &target_path);
+
+    fs::create_dir_all(&temp_root).map_err(|error| error.to_string())?;
+    fs::write(&source_path, markdown).map_err(|error| error.to_string())?;
+
+    let result = (|| {
+        let mut args = parse_pandoc_extra_args(&pandoc_args)?;
+
+        if let Some(resource_path) = document_path
+            .as_deref()
+            .and_then(parent_directory_from_path)
+        {
+            args.push(format!("--resource-path={}", resource_path.display()));
+        }
+
+        args.extend([
+            "--from".to_string(),
+            "gfm+tex_math_dollars+tex_math_single_backslash".to_string(),
+            "--to".to_string(),
+            format.pandoc_writer().to_string(),
+            "--output".to_string(),
+            output_path.to_string_lossy().to_string(),
+            source_path.to_string_lossy().to_string(),
+        ]);
+
+        if !run(
+            &pandoc_binary,
+            &source_path,
+            &output_path,
+            &working_directory,
+            &args,
+        )? {
+            return Err("Pandoc export failed".to_string());
+        }
+
+        let metadata = fs::metadata(&output_path)
+            .map_err(|_| "Pandoc did not create an output file".to_string())?;
+        if metadata.len() == 0 {
+            return Err("Pandoc created an empty output file".to_string());
         }
 
         fs::copy(&output_path, &target_path).map_err(|error| error.to_string())?;
@@ -1328,6 +1559,74 @@ fn export_pdf_file_blocking(path: String, html: String) -> Result<(), String> {
             Ok(pdf_output_file_size(output_path).is_some())
         },
     )
+}
+
+#[tauri::command]
+pub(crate) async fn export_pandoc_file(
+    path: String,
+    markdown: String,
+    format: PandocExportFormat,
+    document_path: Option<String>,
+    pandoc_path: String,
+    pandoc_args: String,
+) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        export_pandoc_file_blocking(
+            path,
+            markdown,
+            format,
+            document_path,
+            pandoc_path,
+            pandoc_args,
+        )
+    })
+    .await
+    .map_err(|error| format!("Pandoc export task failed: {error}"))?
+}
+
+fn export_pandoc_file_blocking(
+    path: String,
+    markdown: String,
+    format: PandocExportFormat,
+    document_path: Option<String>,
+    pandoc_path: String,
+    pandoc_args: String,
+) -> Result<(), String> {
+    let pandoc_binary = find_pandoc(&pandoc_path)?;
+
+    export_pandoc_file_with_runner(
+        path,
+        markdown,
+        format,
+        document_path,
+        Some(pandoc_binary),
+        pandoc_args,
+        |binary, _source_path, _output_path, working_directory, args| {
+            run_pandoc_process(binary, working_directory, args)
+        },
+    )
+}
+
+#[tauri::command]
+pub(crate) async fn check_pandoc_available(pandoc_path: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || check_pandoc_available_blocking(pandoc_path))
+        .await
+        .map_err(|error| format!("Pandoc check task failed: {error}"))?
+}
+
+fn check_pandoc_available_blocking(pandoc_path: String) -> Result<(), String> {
+    find_pandoc(&pandoc_path).map(|_| ())
+}
+
+#[tauri::command]
+pub(crate) async fn detect_pandoc_path() -> Result<Option<String>, String> {
+    tauri::async_runtime::spawn_blocking(detect_pandoc_path_blocking)
+        .await
+        .map_err(|error| format!("Pandoc detection task failed: {error}"))
+}
+
+fn detect_pandoc_path_blocking() -> Option<String> {
+    detect_pandoc_path_from_candidates(pandoc_candidates()).map(|path| path_to_string(&path))
 }
 
 #[tauri::command]
@@ -1807,6 +2106,113 @@ mod tests {
 
         assert_eq!(result, Err("PDF export HTML is empty".to_string()));
         assert!(!renderer_called);
+
+        fs::remove_dir_all(root).expect("test tree should be removed");
+    }
+
+    #[test]
+    fn parses_quoted_pandoc_arguments() {
+        assert_eq!(
+            parse_pandoc_extra_args("--toc --metadata title=\"Draft Notes\""),
+            Ok(vec![
+                "--toc".to_string(),
+                "--metadata".to_string(),
+                "title=Draft Notes".to_string()
+            ])
+        );
+        assert_eq!(
+            parse_pandoc_extra_args("--metadata title=\"Draft"),
+            Err("Pandoc arguments contain an unterminated quote".to_string())
+        );
+    }
+
+    #[test]
+    fn rejects_missing_explicit_pandoc_path_before_export() {
+        assert_eq!(
+            check_pandoc_available_blocking("/mock/missing/pandoc".to_string()),
+            Err("Pandoc executable not found: /mock/missing/pandoc".to_string())
+        );
+    }
+
+    #[test]
+    fn detects_first_existing_pandoc_candidate() {
+        let root = std::env::temp_dir().join(format!(
+            "markra-pandoc-detect-test-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be after epoch")
+                .as_nanos()
+        ));
+        let missing = root.join("missing-pandoc");
+        let pandoc = root.join("pandoc");
+
+        fs::create_dir_all(&root).expect("test folder should be created");
+        fs::write(&pandoc, b"mock").expect("mock pandoc should be written");
+
+        assert_eq!(
+            detect_pandoc_path_from_candidates([missing, pandoc.clone()]),
+            Some(pandoc)
+        );
+
+        fs::remove_dir_all(root).expect("test tree should be removed");
+    }
+
+    #[test]
+    fn exports_markdown_with_pandoc_runner() {
+        let root = std::env::temp_dir().join(format!(
+            "markra-pandoc-export-test-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("system clock should be after epoch")
+                .as_nanos()
+        ));
+        let note = root.join("notes").join("draft.md");
+        let target = root.join("draft.docx");
+        let pandoc = PathBuf::from("/mock/pandoc");
+
+        fs::create_dir_all(note.parent().expect("note should have parent"))
+            .expect("test folder should be created");
+        export_pandoc_file_with_runner(
+            target.to_string_lossy().to_string(),
+            "# Draft\n\n![Chart](assets/chart.png)".to_string(),
+            PandocExportFormat::Docx,
+            Some(note.to_string_lossy().to_string()),
+            Some(pandoc.clone()),
+            "--toc --metadata title=\"Draft Notes\"".to_string(),
+            |binary, input_path, output_path, working_directory, args| {
+                assert_eq!(binary, pandoc.as_path());
+                assert_eq!(
+                    working_directory,
+                    note.parent().expect("note should have parent")
+                );
+                assert!(fs::read_to_string(input_path)
+                    .expect("source markdown should be readable")
+                    .contains("![Chart](assets/chart.png)"));
+                assert!(args.contains(&"--toc".to_string()));
+                assert!(args.contains(&"--metadata".to_string()));
+                assert!(args.contains(&"title=Draft Notes".to_string()));
+                assert!(args.windows(2).any(|window| {
+                    window[0] == "--from"
+                        && window[1] == "gfm+tex_math_dollars+tex_math_single_backslash"
+                }));
+                assert!(args
+                    .windows(2)
+                    .any(|window| window[0] == "--to" && window[1] == "docx"));
+                assert!(args
+                    .windows(2)
+                    .any(|window| window[0] == "--output"
+                        && window[1] == output_path.to_string_lossy()));
+                assert_eq!(args.last(), Some(&input_path.to_string_lossy().to_string()));
+                fs::write(output_path, b"mock-docx").expect("mock export should be written");
+                Ok(true)
+            },
+        )
+        .expect("pandoc export should succeed");
+
+        assert_eq!(
+            fs::read(&target).expect("export file should be readable"),
+            b"mock-docx"
+        );
 
         fs::remove_dir_all(root).expect("test tree should be removed");
     }

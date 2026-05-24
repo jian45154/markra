@@ -25,7 +25,10 @@ type NativeAiQuickActionIntent = Exclude<AiEditIntent, "custom">;
 type NativeMenuHandlerOptions = {
   checkForUpdates?: () => unknown | Promise<unknown>;
   closeDocument?: () => unknown | Promise<unknown>;
+  exportDocx?: () => unknown | Promise<unknown>;
+  exportEpub?: () => unknown | Promise<unknown>;
   exportHtml?: () => unknown | Promise<unknown>;
+  exportLatex?: () => unknown | Promise<unknown>;
   exportPdf?: () => unknown | Promise<unknown>;
   insertMarkdownSnippet: (open: string, close: string, placeholder: string) => unknown;
   insertMarkdownTable: () => unknown;
@@ -65,7 +68,10 @@ type ApplicationShortcutOptions = {
 export function useNativeMenuHandlers({
   checkForUpdates,
   closeDocument,
+  exportDocx,
+  exportEpub,
   exportHtml,
+  exportLatex,
   exportPdf,
   insertMarkdownSnippet,
   insertMarkdownTable,
@@ -89,7 +95,10 @@ export function useNativeMenuHandlers({
   );
   const latestOptionsRef = useRef({
     checkForUpdates,
+    exportDocx,
+    exportEpub,
     exportHtml,
+    exportLatex,
     exportPdf,
     closeDocument,
     insertMarkdownSnippet,
@@ -110,7 +119,10 @@ export function useNativeMenuHandlers({
   });
   latestOptionsRef.current = {
     checkForUpdates,
+    exportDocx,
+    exportEpub,
     exportHtml,
+    exportLatex,
     exportPdf,
     closeDocument,
     insertMarkdownSnippet,
@@ -140,6 +152,9 @@ export function useNativeMenuHandlers({
       saveDocumentAs: () => latestOptionsRef.current.saveDocumentAs(),
       exportPdf: () => latestOptionsRef.current.exportPdf?.(),
       exportHtml: () => latestOptionsRef.current.exportHtml?.(),
+      exportDocx: () => latestOptionsRef.current.exportDocx?.(),
+      exportEpub: () => latestOptionsRef.current.exportEpub?.(),
+      exportLatex: () => latestOptionsRef.current.exportLatex?.(),
       formatBold: () => runMarkdownShortcut("bold"),
       formatItalic: () => runMarkdownShortcut("italic"),
       formatStrikethrough: () => runMarkdownShortcut("strikethrough"),

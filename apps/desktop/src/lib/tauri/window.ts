@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 
+export type NativeSettingsWindowTarget = "exportPandocPath";
+
 export type NativeEditorWindowRestoreState = {
   filePath: string | null;
   label: string;
@@ -11,8 +13,33 @@ export type SetNativeEditorWindowRestoreStateInput = {
   openFilePaths: string[];
 };
 
-export function openSettingsWindow() {
-  return invoke("open_settings_window");
+type NativeSettingsWindowTargetPayload = {
+  target?: unknown;
+};
+
+const nativeSettingsWindowTargetEvent = "markra://settings-window-target";
+
+function isNativeSettingsWindowTarget(value: unknown): value is NativeSettingsWindowTarget {
+  return value === "exportPandocPath";
+}
+
+export function openSettingsWindow(target?: NativeSettingsWindowTarget) {
+  return invoke("open_settings_window", {
+    target: target ?? null
+  });
+}
+
+export async function listenNativeSettingsWindowTarget(onTarget: (target: NativeSettingsWindowTarget) => unknown) {
+  if (!("__TAURI_INTERNALS__" in window)) {
+    return () => {};
+  }
+
+  const { listen } = await import("@tauri-apps/api/event");
+  return listen<NativeSettingsWindowTargetPayload>(nativeSettingsWindowTargetEvent, (event) => {
+    if (isNativeSettingsWindowTarget(event.payload.target)) {
+      onTarget(event.payload.target);
+    }
+  });
 }
 
 export function openNativeExternalUrl(url: string) {

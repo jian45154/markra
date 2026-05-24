@@ -47,6 +47,9 @@ export type NativeMenuCommand =
   | "saveDocumentAs"
   | "exportPdf"
   | "exportHtml"
+  | "exportDocx"
+  | "exportEpub"
+  | "exportLatex"
   | "formatBold"
   | "formatItalic"
   | "formatStrikethrough"
@@ -253,7 +256,10 @@ export function createNativeEditorContextMenuItems(
     separator(),
     submenu("markra:context:export", label("menu.export"), [
       customItem("markra:context:export-pdf", label("menu.exportPdf"), "CmdOrCtrl+P", handlers.exportPdf),
-      customItem("markra:context:export-html", label("menu.exportHtml"), "CmdOrCtrl+Shift+E", handlers.exportHtml)
+      customItem("markra:context:export-html", label("menu.exportHtml"), "CmdOrCtrl+Shift+E", handlers.exportHtml),
+      customItem("markra:context:export-docx", label("menu.exportDocx"), undefined, handlers.exportDocx),
+      customItem("markra:context:export-epub", label("menu.exportEpub"), undefined, handlers.exportEpub),
+      customItem("markra:context:export-latex", label("menu.exportLatex"), undefined, handlers.exportLatex)
     ])
   ];
 

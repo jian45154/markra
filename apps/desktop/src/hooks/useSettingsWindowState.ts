@@ -36,11 +36,17 @@ import {
   notifyAppWebSearchSettingsChanged
 } from "../lib/settings/settings-events";
 import {
+  detectNativePandocPath,
   deleteNativeMarkdownTemplateFile,
   readNativeMarkdownTemplateFile,
   requestNativeAiJson,
   writeNativeMarkdownTemplateFile
 } from "../lib/tauri";
+import { showAppToast } from "../lib/app-toast";
+import {
+  listenNativeSettingsWindowTarget,
+  type NativeSettingsWindowTarget
+} from "../lib/tauri/window";
 import {
   loadMarkdownTemplatesFromEntries,
   markdownTemplateEntryFromTemplate,
@@ -61,10 +67,32 @@ export type SettingsCategory =
   | "keyboardShortcuts"
   | "export";
 
+export type SettingsFocusTarget = "pandocPath";
+
+function settingsTargetFromSearch(search: string): NativeSettingsWindowTarget | null {
+  const target = new URLSearchParams(search).get("settingsTarget");
+
+  return target === "exportPandocPath" ? target : null;
+}
+
+function settingsCategoryForTarget(target: NativeSettingsWindowTarget | null): SettingsCategory {
+  return target === "exportPandocPath" ? "export" : "general";
+}
+
+function settingsFocusTargetForNativeTarget(target: NativeSettingsWindowTarget | null): SettingsFocusTarget | null {
+  return target === "exportPandocPath" ? "pandocPath" : null;
+}
+
 export function useSettingsWindowState() {
   const appTheme = useAppTheme();
   const appLanguage = useAppLanguage();
-  const [activeCategory, setActiveCategory] = useState<SettingsCategory>("general");
+  const initialSettingsTarget = settingsTargetFromSearch(window.location.search);
+  const [activeCategory, setActiveCategory] = useState<SettingsCategory>(() =>
+    settingsCategoryForTarget(initialSettingsTarget)
+  );
+  const [settingsFocusTarget, setSettingsFocusTarget] = useState<SettingsFocusTarget | null>(() =>
+    settingsFocusTargetForNativeTarget(initialSettingsTarget)
+  );
   const [aiSettings, setAiSettings] = useState<AiProviderSettings>(() => createDefaultAiSettings());
   const [aiSettingsSaved, setAiSettingsSaved] = useState(false);
   const [editorPreferences, setEditorPreferences] = useState<EditorPreferences>(defaultEditorPreferences);
@@ -80,6 +108,17 @@ export function useSettingsWindowState() {
     () => aiSettings.providers.find((provider) => provider.id === selectedAiProviderId) ?? aiSettings.providers[0],
     [aiSettings.providers, selectedAiProviderId]
   );
+  const handleSelectCategory = useCallback((category: SettingsCategory) => {
+    setActiveCategory(category);
+    setSettingsFocusTarget(null);
+  }, []);
+  const handleSettingsWindowTarget = useCallback((target: NativeSettingsWindowTarget) => {
+    setActiveCategory(settingsCategoryForTarget(target));
+    setSettingsFocusTarget(settingsFocusTargetForNativeTarget(target));
+  }, []);
+  const clearSettingsFocusTarget = useCallback(() => {
+    setSettingsFocusTarget(null);
+  }, []);
 
   useLayoutEffect(() => {
     document.documentElement.dataset.window = "settings";
@@ -92,6 +131,27 @@ export function useSettingsWindowState() {
   useLayoutEffect(() => {
     document.title = translate("settings.title");
   }, [translate]);
+
+  useEffect(() => {
+    let cancelled = false;
+    let stopListening: (() => unknown) | null = null;
+
+    listenNativeSettingsWindowTarget((target) => {
+      if (!cancelled) handleSettingsWindowTarget(target);
+    }).then((cleanup) => {
+      if (cancelled) {
+        cleanup();
+        return;
+      }
+
+      stopListening = cleanup;
+    }).catch(() => {});
+
+    return () => {
+      cancelled = true;
+      stopListening?.();
+    };
+  }, [handleSettingsWindowTarget]);
 
   useEffect(() => {
     let cancelled = false;
@@ -281,6 +341,31 @@ export function useSettingsWindowState() {
       .then(() => notifyAppExportSettingsChanged(normalizedSettings))
       .catch(() => {});
   }, []);
+  const handleDetectPandocPath = useCallback(() => {
+    detectNativePandocPath().then((path) => {
+      if (!path) {
+        showAppToast({
+          message: translate("settings.export.pandocPathNotFound"),
+          status: "error"
+        });
+        return;
+      }
+
+      handleUpdateExportSettings({
+        ...exportSettings,
+        pandocPath: path
+      });
+      showAppToast({
+        message: translate("settings.export.pandocPathDetected"),
+        status: "success"
+      });
+    }).catch(() => {
+      showAppToast({
+        message: translate("settings.export.pandocPathNotFound"),
+        status: "error"
+      });
+    });
+  }, [exportSettings, handleUpdateExportSettings, translate]);
 
   const handleUpdateWebSearchSettings = useCallback((settings: WebSearchSettings) => {
     const normalizedSettings = normalizeWebSearchSettings(settings);
@@ -309,11 +394,14 @@ export function useSettingsWindowState() {
     handleUpdateAiSettings,
     handleUpdateEditorPreferences,
     handleUpdateExportSettings,
+    handleDetectPandocPath,
     handleUpdateWebSearchSettings,
     selectedAiProvider,
-    setActiveCategory,
+    setActiveCategory: handleSelectCategory,
     setSelectedAiProviderId,
     markdownTemplates,
+    settingsFocusTarget,
+    clearSettingsFocusTarget,
     translate,
     webSearchSettings,
     welcomeReset
