@@ -156,6 +156,7 @@ describe("app settings", () => {
       aiQuickActionPrompts: defaultAiQuickActionPrompts,
       aiSelectionDisplayMode: "command",
       autoOpenAiOnSelection: true,
+      autoUpdateEnabled: true,
       bodyFontSize: 16,
       clipboardImageFolder: "assets",
       closeAiCommandOnAgentPanelOpen: false,
@@ -384,6 +385,7 @@ describe("app settings", () => {
     store.get.mockResolvedValue({
       aiSelectionDisplayMode: "command",
       autoOpenAiOnSelection: false,
+      autoUpdateEnabled: true,
       bodyFontSize: 99,
       clipboardImageFolder: "media/screenshots",
       closeAiCommandOnAgentPanelOpen: true,
@@ -428,6 +430,7 @@ describe("app settings", () => {
       aiQuickActionPrompts: defaultAiQuickActionPrompts,
       aiSelectionDisplayMode: "command",
       autoOpenAiOnSelection: false,
+      autoUpdateEnabled: true,
       bodyFontSize: 16,
       clipboardImageFolder: "media/screenshots",
       closeAiCommandOnAgentPanelOpen: true,
@@ -502,6 +505,12 @@ describe("app settings", () => {
       { id: "sourceMode", visible: true },
       { id: "splitMode", visible: true }
     ]);
+  });
+
+  it("normalizes the automatic update preference", () => {
+    expect(normalizeEditorPreferences({}).autoUpdateEnabled).toBe(true);
+    expect(normalizeEditorPreferences({ autoUpdateEnabled: false }).autoUpdateEnabled).toBe(false);
+    expect(normalizeEditorPreferences({ autoUpdateEnabled: "no" }).autoUpdateEnabled).toBe(true);
   });
 
   it("falls back to the quick input for unknown AI selection display modes", () => {
@@ -727,6 +736,7 @@ describe("app settings", () => {
       aiQuickActionPrompts: defaultAiQuickActionPrompts,
       aiSelectionDisplayMode: "command",
       autoOpenAiOnSelection: true,
+      autoUpdateEnabled: true,
       bodyFontSize: 16,
       clipboardImageFolder: "assets",
       closeAiCommandOnAgentPanelOpen: false,
@@ -779,6 +789,7 @@ describe("app settings", () => {
       aiQuickActionPrompts: defaultAiQuickActionPrompts,
       aiSelectionDisplayMode: "command",
       autoOpenAiOnSelection: false,
+      autoUpdateEnabled: true,
       bodyFontSize: 18,
       clipboardImageFolder: "images",
       closeAiCommandOnAgentPanelOpen: true,
@@ -839,6 +850,7 @@ describe("app settings", () => {
       aiQuickActionPrompts: defaultAiQuickActionPrompts,
       aiSelectionDisplayMode: "command",
       autoOpenAiOnSelection: false,
+      autoUpdateEnabled: true,
       bodyFontSize: 18,
       clipboardImageFolder: "images",
       closeAiCommandOnAgentPanelOpen: true,

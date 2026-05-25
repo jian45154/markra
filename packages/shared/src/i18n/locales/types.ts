@@ -52,6 +52,8 @@ export type I18nKey =
   | "settings.update.title"
   | "settings.update.description"
   | "settings.update.check"
+  | "settings.update.autoCheck"
+  | "settings.update.autoCheckDescription"
   | "settings.theme.colorTitle"
   | "settings.theme.description"
   | "settings.theme.system"

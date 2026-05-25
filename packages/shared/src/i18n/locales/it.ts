@@ -28,6 +28,8 @@ const messages: LocaleMessages = {
   "settings.update.title": "Aggiornamenti app",
   "settings.update.description": "Controlla se è disponibile una versione più recente di Markra.",
   "settings.update.check": "Controlla aggiornamenti",
+  "settings.update.autoCheck": "Controlla aggiornamenti automaticamente",
+  "settings.update.autoCheckDescription": "Controlla in background all'avvio di Markra e periodicamente mentre è aperto.",
   "settings.theme.system": "Sistema",
   "settings.theme.light": "Chiaro",
   "settings.theme.dark": "Scuro",

@@ -110,6 +110,7 @@ export type EditorPreferences = {
   aiQuickActionPrompts: AiQuickActionPrompts;
   aiSelectionDisplayMode: AiSelectionDisplayMode;
   autoOpenAiOnSelection: boolean;
+  autoUpdateEnabled: boolean;
   bodyFontSize: number;
   clipboardImageFolder: string;
   closeAiCommandOnAgentPanelOpen: boolean;
@@ -239,6 +240,7 @@ export const defaultEditorPreferences: EditorPreferences = {
   aiQuickActionPrompts: { ...defaultAiQuickActionPrompts },
   aiSelectionDisplayMode: "command",
   autoOpenAiOnSelection: true,
+  autoUpdateEnabled: true,
   bodyFontSize: 16,
   clipboardImageFolder: "assets",
   closeAiCommandOnAgentPanelOpen: false,
@@ -763,6 +765,10 @@ export function normalizeEditorPreferences(value: unknown): EditorPreferences {
       typeof preferences.autoOpenAiOnSelection === "boolean"
         ? preferences.autoOpenAiOnSelection
         : defaultEditorPreferences.autoOpenAiOnSelection,
+    autoUpdateEnabled:
+      typeof preferences.autoUpdateEnabled === "boolean"
+        ? preferences.autoUpdateEnabled
+        : defaultEditorPreferences.autoUpdateEnabled,
     bodyFontSize: editorBodyFontSizeOptions.includes(preferences.bodyFontSize as typeof editorBodyFontSizeOptions[number])
       ? Number(preferences.bodyFontSize)
       : defaultEditorPreferences.bodyFontSize,

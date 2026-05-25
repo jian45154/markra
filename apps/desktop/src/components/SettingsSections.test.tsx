@@ -12,6 +12,7 @@ import {
   AiSettings,
   AppearanceSettings,
   EditorSettings,
+  GeneralSettings,
   KeyboardShortcutsSettings,
   StorageSettings,
   TemplatesSettings
@@ -24,6 +25,37 @@ import {
 function translate(key: Parameters<typeof t>[1]) {
   return t("en", key);
 }
+
+describe("GeneralSettings", () => {
+  it("toggles automatic update checks", () => {
+    const onUpdatePreferences = vi.fn();
+
+    render(
+      <GeneralSettings
+        appVersion="0.0.7"
+        language="en"
+        preferences={defaultEditorPreferences}
+        translate={translate}
+        welcomeReset={false}
+        onCheckForUpdates={vi.fn()}
+        onResetWelcomeDocument={vi.fn()}
+        onSelectLanguage={vi.fn()}
+        onUpdatePreferences={onUpdatePreferences}
+      />
+    );
+
+    const autoUpdateSwitch = screen.getByRole("switch", { name: "Automatically check for updates" });
+
+    expect(autoUpdateSwitch).toHaveAttribute("aria-checked", "true");
+
+    fireEvent.click(autoUpdateSwitch);
+
+    expect(onUpdatePreferences).toHaveBeenCalledWith({
+      ...defaultEditorPreferences,
+      autoUpdateEnabled: false
+    });
+  });
+});
 
 function mockTitlebarActionRects(actionIds: string[]) {
   actionIds.forEach((id, index) => {

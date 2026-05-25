@@ -117,6 +117,7 @@ describe("settings events", () => {
       aiQuickActionPrompts: defaultAiQuickActionPrompts,
       aiSelectionDisplayMode: "command",
       autoOpenAiOnSelection: false,
+      autoUpdateEnabled: true,
       bodyFontSize: 18,
       clipboardImageFolder: "images",
       closeAiCommandOnAgentPanelOpen: true,

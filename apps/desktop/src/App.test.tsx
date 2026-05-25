@@ -97,6 +97,43 @@ const defaultImageUpload = {
   }
 };
 
+function createStoredEditorPreferences(
+  overrides: Partial<Parameters<typeof mockedSaveStoredEditorPreferences>[0]> = {}
+): Parameters<typeof mockedSaveStoredEditorPreferences>[0] {
+  return {
+    aiQuickActionPrompts: defaultAiQuickActionPrompts,
+    aiSelectionDisplayMode: "command",
+    autoOpenAiOnSelection: true,
+    autoUpdateEnabled: true,
+    bodyFontSize: 16,
+    clipboardImageFolder: "assets",
+    closeAiCommandOnAgentPanelOpen: false,
+    contentWidth: "default",
+    contentWidthPx: null,
+    extendedSyntax: {
+      githubAlerts: true,
+      highlight: true
+    },
+    imageUpload: defaultImageUpload,
+    lineHeight: 1.65,
+    markdownShortcuts: defaultMarkdownShortcuts,
+    markdownTemplates: [],
+    restoreWorkspaceOnStartup: true,
+    suggestAiPanelForComplexInlinePrompts: true,
+    showDocumentTabs: true,
+    splitVisualPanePercent: 50,
+    titlebarActions: [
+      { id: "aiAgent", visible: true },
+      { id: "sourceMode", visible: true },
+      { id: "splitMode", visible: true },
+      { id: "save", visible: true },
+      { id: "theme", visible: true }
+    ],
+    showWordCount: true,
+    ...overrides
+  };
+}
+
 async function settleEditorUpdates() {
   await new Promise((resolve) => {
     window.setTimeout(resolve, 300);
@@ -176,6 +213,7 @@ describe("Markra workspace", () => {
       aiQuickActionPrompts: defaultAiQuickActionPrompts,
       aiSelectionDisplayMode: "command",
       autoOpenAiOnSelection: true,
+      autoUpdateEnabled: true,
       bodyFontSize: 16,
       clipboardImageFolder: "assets",
       closeAiCommandOnAgentPanelOpen: false,
@@ -220,6 +258,7 @@ describe("Markra workspace", () => {
         aiQuickActionPrompts: defaultAiQuickActionPrompts,
         aiSelectionDisplayMode: "command",
         autoOpenAiOnSelection: true,
+        autoUpdateEnabled: true,
         bodyFontSize: 16,
         clipboardImageFolder: "assets",
         closeAiCommandOnAgentPanelOpen: false,
@@ -252,6 +291,7 @@ describe("Markra workspace", () => {
         aiQuickActionPrompts: defaultAiQuickActionPrompts,
         aiSelectionDisplayMode: "command",
         autoOpenAiOnSelection: true,
+        autoUpdateEnabled: true,
         bodyFontSize: 16,
         clipboardImageFolder: "assets",
         closeAiCommandOnAgentPanelOpen: false,
@@ -712,6 +752,7 @@ describe("Markra workspace", () => {
       aiQuickActionPrompts: defaultAiQuickActionPrompts,
       aiSelectionDisplayMode: "command" as const,
       autoOpenAiOnSelection: true,
+      autoUpdateEnabled: true,
       bodyFontSize: 16,
       clipboardImageFolder: "assets",
       closeAiCommandOnAgentPanelOpen: false,
@@ -818,6 +859,7 @@ describe("Markra workspace", () => {
       aiQuickActionPrompts: defaultAiQuickActionPrompts,
       aiSelectionDisplayMode: "command",
       autoOpenAiOnSelection: true,
+      autoUpdateEnabled: true,
       bodyFontSize: 16,
       clipboardImageFolder: "assets",
       closeAiCommandOnAgentPanelOpen: false,
@@ -1063,6 +1105,25 @@ describe("Markra workspace", () => {
     await waitFor(() => expect(document.querySelector(".app-toast")).toHaveTextContent("Markra is up to date."));
   });
 
+  it("stores the automatic update preference from the settings window", async () => {
+    window.history.pushState({}, "", "/?settings=1");
+
+    renderApp();
+
+    const autoUpdateSwitch = await screen.findByRole("switch", { name: "Automatically check for updates" });
+
+    expect(autoUpdateSwitch).toHaveAttribute("aria-checked", "true");
+
+    fireEvent.click(autoUpdateSwitch);
+
+    await waitFor(() => expect(mockedSaveStoredEditorPreferences).toHaveBeenCalledWith(expect.objectContaining({
+      autoUpdateEnabled: false
+    })));
+    await waitFor(() => expect(mockedNotifyAppEditorPreferencesChanged).toHaveBeenCalledWith(expect.objectContaining({
+      autoUpdateEnabled: false
+    })));
+  });
+
   it("checks for updates from the native application menu", async () => {
     renderApp();
 
@@ -1077,6 +1138,25 @@ describe("Markra workspace", () => {
 
     expect(mockedCheckNativeAppUpdate).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(document.querySelector(".app-toast")).toHaveTextContent("Markra is up to date."));
+  });
+
+  it("waits for stored automatic update preference before startup update checks", async () => {
+    let resolveEditorPreferences: (preferences: Parameters<typeof mockedSaveStoredEditorPreferences>[0]) => void = () => {};
+    mockedGetStoredEditorPreferences.mockReturnValue(new Promise((resolve) => {
+      resolveEditorPreferences = resolve;
+    }));
+
+    renderApp();
+
+    await waitFor(() => expect(mockedInstallNativeApplicationMenu).toHaveBeenCalledTimes(1));
+    expect(mockedCheckNativeAppUpdate).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveEditorPreferences(createStoredEditorPreferences({ autoUpdateEnabled: false }));
+    });
+
+    await waitFor(() => expect(mockedGetStoredEditorPreferences).toHaveBeenCalledTimes(1));
+    expect(mockedCheckNativeAppUpdate).not.toHaveBeenCalled();
   });
 
   it("opens a folder markdown tree from the lower-left file list button", async () => {
@@ -2596,6 +2676,7 @@ describe("Markra workspace", () => {
       aiQuickActionPrompts: defaultAiQuickActionPrompts,
       aiSelectionDisplayMode: "command",
       autoOpenAiOnSelection: true,
+      autoUpdateEnabled: true,
       bodyFontSize: 16,
       clipboardImageFolder: "assets",
       closeAiCommandOnAgentPanelOpen: false,
@@ -2728,6 +2809,7 @@ describe("Markra workspace", () => {
       aiQuickActionPrompts: defaultAiQuickActionPrompts,
       aiSelectionDisplayMode: "command",
       autoOpenAiOnSelection: true,
+      autoUpdateEnabled: true,
       bodyFontSize: 16,
       clipboardImageFolder: "assets",
       closeAiCommandOnAgentPanelOpen: false,

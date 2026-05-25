@@ -28,6 +28,8 @@ const messages: LocaleMessages = {
   "settings.update.title": "앱 업데이트",
   "settings.update.description": "새 Markra 릴리스가 있는지 확인합니다.",
   "settings.update.check": "업데이트 확인",
+  "settings.update.autoCheck": "업데이트 자동 확인",
+  "settings.update.autoCheckDescription": "Markra 시작 시와 실행 중에 백그라운드에서 주기적으로 확인합니다.",
   "settings.theme.system": "시스템",
   "settings.theme.light": "라이트",
   "settings.theme.dark": "다크",

@@ -1609,6 +1609,22 @@ export function GeneralSettings({
           description={`Markra ${appVersion}`}
         />
         <SettingsRow
+          title={translate("settings.update.autoCheck")}
+          description={translate("settings.update.autoCheckDescription")}
+          action={
+            <SettingsSwitch
+              checked={preferences.autoUpdateEnabled}
+              label={translate("settings.update.autoCheck")}
+              onChange={() =>
+                onUpdatePreferences({
+                  ...preferences,
+                  autoUpdateEnabled: !preferences.autoUpdateEnabled
+                })
+              }
+            />
+          }
+        />
+        <SettingsRow
           title={translate("settings.update.title")}
           description={translate("settings.update.description")}
           action={

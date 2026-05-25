@@ -128,6 +128,7 @@ describe("Markra AI workspace", () => {
       aiQuickActionPrompts: defaultAiQuickActionPrompts,
       aiSelectionDisplayMode: "command",
       autoOpenAiOnSelection: true,
+      autoUpdateEnabled: true,
       bodyFontSize: 16,
       clipboardImageFolder: "assets",
       closeAiCommandOnAgentPanelOpen: false,

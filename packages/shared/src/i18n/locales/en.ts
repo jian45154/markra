@@ -40,6 +40,8 @@ const messages: BaseLocaleMessages = {
   "settings.update.title": "App updates",
   "settings.update.description": "Check whether a newer Markra release is available.",
   "settings.update.check": "Check for updates",
+  "settings.update.autoCheck": "Automatically check for updates",
+  "settings.update.autoCheckDescription": "Check in the background when Markra starts and periodically while it is open.",
   "settings.welcome.status": "Welcome document will show next launch.",
   "settings.theme.colorTitle": "Color theme",
   "settings.theme.description": "System follows Light or Dark automatically. Any other theme stays fixed.",

@@ -2195,7 +2195,8 @@ export default function App() {
     editor,
     outlineItems.length
   ]);
-  const appUpdater = useAutoUpdater(appLanguage.language, appLanguage.ready, {
+  const appUpdater = useAutoUpdater(appLanguage.language, appLanguage.ready && !editorPreferences.loading, {
+    autoCheck: editorPreferences.preferences.autoUpdateEnabled,
     confirmRestart: confirmCanDiscardCurrentDocument
   });
   const nativeMenuHandlers = useNativeMenuHandlers({
