@@ -19,6 +19,7 @@ import { SettingsContent, SettingsSidebar } from "./SettingsShell";
 import { useSettingsWindowState } from "../hooks/useSettingsWindowState";
 import { useAutoUpdater } from "../hooks/useAutoUpdater";
 import { useDefaultContextMenuBlocker } from "../hooks/useDefaultContextMenuBlocker";
+import { useStartupWindowReveal } from "../hooks/useStartupWindowReveal";
 import { appVersion } from "../lib/app-version";
 import { resolveDesktopPlatform } from "../lib/platform";
 import { closeNativeWindow } from "../lib/tauri";
@@ -26,6 +27,8 @@ import { MacWindowControls } from "./MacWindowControls";
 import { WindowsWindowControls } from "./WindowsWindowControls";
 import { getAppRuntime } from "../runtime";
 import type { SettingsCategory } from "../hooks/useSettingsWindowState";
+
+const settingsWindowRevealFallbackMs = 10000;
 
 export function SettingsWindow() {
   const settingsState = useSettingsWindowState();
@@ -91,6 +94,7 @@ export function SettingsWindow() {
   const platform = resolveDesktopPlatform();
   const showWindowsWindowChrome = platform === "windows" && appFeatures.nativeWindowChrome;
   const showMacosWindowChrome = platform === "macos" && appFeatures.nativeWindowChrome;
+  const settingsStartupReady = appLanguage.ready && appTheme.ready;
   const settingsLayoutClassName = showWindowsWindowChrome
     ? "settings-layout absolute inset-x-0 top-10 bottom-0 grid grid-cols-[180px_minmax(0,1fr)]"
     : "settings-layout grid h-screen grid-cols-[180px_minmax(0,1fr)]";
@@ -101,6 +105,12 @@ export function SettingsWindow() {
   const updater = useAutoUpdater(appLanguage.language, appFeatures.updater && appLanguage.ready, {
     autoCheck: false
   });
+  useStartupWindowReveal({
+    fallbackMs: settingsWindowRevealFallbackMs,
+    ready: settingsStartupReady
+  });
+
+  if (!settingsStartupReady) return null;
 
   return (
     <main

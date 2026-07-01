@@ -78,7 +78,8 @@ import {
   useApplicationShortcuts,
   useNativeMarkdownDrop,
   useNativeMenuHandlers,
-  useNativeMenus
+  useNativeMenus,
+  useSettingsWindowShortcut
 } from "./hooks/useNativeBindings";
 import type { Editor as MilkdownEditor } from "@milkdown/kit/core";
 import {
@@ -244,7 +245,11 @@ export default function App() {
 }
 
 function SettingsRouteApp() {
-  useStartupWindowReveal({ ready: true });
+  const handleCloseSettings = useCallback(() => {
+    closeNativeWindow().catch(() => {});
+  }, []);
+
+  useSettingsWindowShortcut(handleCloseSettings);
 
   return <SettingsWindow />;
 }
@@ -669,7 +674,7 @@ function WorkspaceApp() {
       sizeBytes: document.sizeBytes
     });
   largeMarkdownVisualBlockedRef.current = largeMarkdownVisualBlocked;
-  const startupSettingsReady = appLanguage.ready && !editorPreferences.loading;
+  const startupSettingsReady = appLanguage.ready && appTheme.ready && !editorPreferences.loading;
   const startupWindowReady =
     startupSettingsReady &&
     (
@@ -3113,6 +3118,7 @@ function WorkspaceApp() {
     openDocument: handleOpenMarkdownFile,
     openDocumentReplace: handleDocumentReplaceOpen,
     openDocumentSearch: handleDocumentSearchOpen,
+    openSettings: handleOpenSettings,
     openWorkspaceSearch: handleGlobalSearchOpen,
     openFolder: handleOpenMarkdownFolder,
     openQuickOpen: handleQuickOpenOpen,

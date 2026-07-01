@@ -1076,6 +1076,9 @@ export function installAppTestHarness() {
     document.documentElement.removeAttribute("data-webkit-scroll-workaround");
     document.documentElement.removeAttribute("data-window");
     document.getElementById("markra-custom-theme-style")?.remove();
+    document.getElementById("markra-startup-theme-style")?.remove();
+    document.documentElement.style.removeProperty("background-color");
+    document.documentElement.style.removeProperty("color-scheme");
     mockedWatchNativeMarkdownFile.mockResolvedValue(() => {});
     mockedWatchNativeMarkdownTree.mockResolvedValue(() => {});
     mockedListNativeMarkdownFileHistory.mockResolvedValue([]);
