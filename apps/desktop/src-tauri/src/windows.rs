@@ -872,14 +872,11 @@ where
     schedule_settings_window_idle_destroy(window.clone());
 }
 
-fn should_close_hidden_settings_window(
-    has_visible_user_window: bool,
-    settings_window_visible: bool,
-) -> bool {
-    !has_visible_user_window && !settings_window_visible
+fn should_close_settings_auxiliary_window(has_visible_user_window: bool) -> bool {
+    !has_visible_user_window
 }
 
-fn close_hidden_settings_window_if_no_user_windows<R>(
+fn close_settings_window_if_no_user_windows<R>(
     app: &tauri::AppHandle<R>,
     destroyed_window_label: &str,
 ) where
@@ -895,10 +892,7 @@ fn close_hidden_settings_window_if_no_user_windows<R>(
     let Some(settings_window) = windows.get(SETTINGS_WINDOW_LABEL) else {
         return;
     };
-    if !should_close_hidden_settings_window(
-        has_visible_user_window,
-        settings_window.is_visible().unwrap_or(false),
-    ) {
+    if !should_close_settings_auxiliary_window(has_visible_user_window) {
         return;
     }
 
@@ -922,7 +916,7 @@ pub(crate) fn apply_settings_window_lifecycle<R>(
         return;
     }
 
-    close_hidden_settings_window_if_no_user_windows(app, window.label());
+    close_settings_window_if_no_user_windows(app, window.label());
 }
 
 fn spawn_settings_window_reveal_fallback<R>(window: tauri::WebviewWindow<R>)
@@ -1352,10 +1346,9 @@ mod tests {
     }
 
     #[test]
-    fn settings_window_lifecycle_closes_only_hidden_cache_without_user_windows() {
-        assert!(should_close_hidden_settings_window(false, false));
-        assert!(!should_close_hidden_settings_window(true, false));
-        assert!(!should_close_hidden_settings_window(false, true));
+    fn settings_window_lifecycle_closes_auxiliary_window_without_user_windows() {
+        assert!(should_close_settings_auxiliary_window(false));
+        assert!(!should_close_settings_auxiliary_window(true));
     }
 
     #[test]
