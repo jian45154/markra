@@ -1,4 +1,8 @@
 <p align="center">
+  <img src="./assets/readme/hero.svg" width="100%" alt="Markra: Write in plain Markdown with native AI and preview-before-apply edits">
+</p>
+
+<p align="center">
   <img src="apps/desktop/app-icon.svg" width="96" alt="Markra logo" />
 </p>
 
